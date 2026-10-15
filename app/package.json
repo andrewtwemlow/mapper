@@ -1,0 +1,28 @@
+{
+  "name": "gpx-mapper-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --max-warnings=0",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write src index.html",
+    "format:check": "prettier --check src index.html",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "leaflet": "1.9.4"
+  },
+  "devDependencies": {
+    "@types/leaflet": "1.9.14",
+    "@typescript-eslint/eslint-plugin": "8.71.2",
+    "@typescript-eslint/parser": "8.71.2",
+    "eslint": "9.27.0",
+    "prettier": "3.5.3",
+    "typescript": "5.8.3",
+    "vite": "8.3.0"
+  }
+}

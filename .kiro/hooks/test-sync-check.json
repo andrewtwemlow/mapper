@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Test / Requirements Sync Check",
+      "trigger": "PostTaskExec",
+      "action": {
+        "type": "agent",
+        "prompt": "A spec task has just been completed. Before marking it done, check whether any user-facing behaviour was added or changed:\n1. Re-read the test scenario checklists in `.kiro/steering/testing.md`.\n2. For each scenario that is relevant to this task, confirm a corresponding test exists in `tests/e2e/` and accurately exercises the current behaviour.\n3. If a test is missing or outdated, update or create the relevant `tests/e2e/<scenario>.spec.ts` file to match the documented requirements.\n4. Do not mark the task complete until the tests are in sync with the requirements."
+      }
+    }
+  ]
+}

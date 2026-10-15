@@ -1,0 +1,90 @@
+repos:
+  # ── General hygiene ────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-vcs-permalinks
+      - id: forbid-new-submodules
+      - id: no-commit-to-branch
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: CHANGELOG.md
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: detect-aws-credentials
+        args: ["--allow-missing-credentials"]
+      - id: detect-private-key
+
+  # ── Conventional Commits ───────────────────────────────────────────────────
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, docs, test, chore, refactor, style, perf, ci]
+
+  # ── Rust: rustfmt ──────────────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: cargo-check
+        name: cargo check
+        description: Check Rust code compiles without errors (catches borrow and type errors fast)
+        language: system
+        entry: cargo check --manifest-path crate/Cargo.toml --target wasm32-unknown-unknown
+        types: [rust]
+        pass_filenames: false
+
+      - id: rustfmt
+        name: rustfmt
+        description: Format Rust code with rustfmt
+        language: system
+        entry: cargo fmt --manifest-path crate/Cargo.toml --
+        types: [rust]
+        pass_filenames: true
+
+  # ── Rust: clippy ───────────────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: clippy
+        name: clippy
+        description: Lint Rust code with clippy (deny warnings)
+        language: system
+        entry: cargo clippy --manifest-path crate/Cargo.toml -- -D warnings
+        types: [rust]
+        pass_filenames: false
+
+  # ── TypeScript: ESLint ─────────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: npm-audit
+        name: npm audit
+        description: Check for known vulnerabilities in npm dependencies
+        language: system
+        entry: bash -c 'cd app && npm audit --audit-level=high'
+        files: ^app/package\.json$
+        pass_filenames: false
+
+      - id: eslint
+        name: eslint
+        description: Lint TypeScript with ESLint
+        language: system
+        entry: bash -c 'cd app && npx eslint --max-warnings=0 "$@"' --
+        types_or: [ts, tsx]
+        pass_filenames: true
+
+  # ── Prettier (TS, HTML, CSS, JSON, YAML, MD) ───────────────────────────────
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        description: Format code with Prettier
+        language: system
+        entry: bash -c 'cd app && npx prettier --write "$@"' --
+        types_or: [ts, tsx, html, css, json, yaml, markdown]
+        pass_filenames: true

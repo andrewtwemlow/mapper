@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Coding Standards Reminder",
+      "trigger": "PostFileSave",
+      "matcher": "\\.(rs|ts|tsx|html|css)$",
+      "action": {
+        "type": "agent",
+        "prompt": "A source file was just saved. Verify it complies with the coding standards in `.kiro/steering/coding-standards.md`:\n- Rust (.rs): rustfmt-compatible formatting, all public items have `///` doc comments, no `unwrap()` across the wasm boundary, errors use `thiserror`.\n- TypeScript (.ts/.tsx): strict types (no `any`), all exported functions have JSDoc, wasm imports only via `src/wasm.ts`, no inline styles in JS.\n- HTML/CSS: semantic HTML5, accessible controls with ARIA labels, CSS custom properties for colours/spacing, no inline styles in JS.\n- All: no dead code, no magic numbers.\nIf you find a violation, flag it and suggest the fix."
+      }
+    }
+  ]
+}

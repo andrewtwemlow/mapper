@@ -1,0 +1,106 @@
+[tools]
+node = "22"
+npm = "latest"
+rust = "stable"
+pre-commit = "latest"
+gh = "latest"
+
+[env]
+# wasm-pack is installed via cargo, not mise — see README for setup instructions
+# Use an absolute path so CARGO_TARGET_DIR resolves correctly regardless of
+# which directory cargo/wasm-pack is invoked from.
+CARGO_TARGET_DIR = "{{config_root}}/crate/target"
+
+# ── Tasks ─────────────────────────────────────────────────────────────────────
+
+[tasks.wasm]
+description = "Compile the Rust crate to WebAssembly (dev build)"
+run = "wasm-pack build crate/ --target web --out-dir ../app/src/wasm-pkg"
+
+[tasks.wasm-release]
+description = "Compile the Rust crate to WebAssembly (release/optimised build)"
+run = "wasm-pack build crate/ --target web --out-dir ../app/src/wasm-pkg --release"
+
+[tasks.install]
+description = "Install all frontend npm dependencies"
+run = "npm install"
+dir = "app"
+
+[tasks.dev]
+description = "Build Wasm (dev) then start the Vite development server"
+depends = ["wasm", "install"]
+run = "npm run dev"
+dir = "app"
+
+[tasks.build]
+description = "Build Wasm (release) then build the frontend for production"
+depends = ["wasm-release", "install"]
+run = "npm run build"
+dir = "app"
+
+[tasks.preview]
+description = "Build for production then serve with the Vite preview server"
+depends = ["build"]
+run = "npm run preview"
+dir = "app"
+
+[tasks.docker-build]
+description = "Build the Docker image"
+run = "docker build -t gpx-mapper ."
+
+[tasks.docker-run]
+description = "Run the Docker container on port 8080"
+run = "docker run --rm -p 8080:80 gpx-mapper"
+
+[tasks.docker]
+description = "Build the Docker image and run it on port 8080"
+depends = ["docker-build"]
+run = "docker run --rm -p 8080:80 gpx-mapper"
+
+[tasks.test-rust]
+description = "Run Rust unit tests"
+run = "cargo test"
+dir = "crate"
+
+[tasks.test-unit]
+description = "Run JS/TS unit tests with Vitest"
+run = "npx vitest run"
+dir = "tests/unit"
+
+[tasks.test-e2e]
+description = "Run Playwright end-to-end tests (requires a prior 'mise run build')"
+run = "npx playwright test"
+dir = "tests/e2e"
+
+[tasks.test]
+description = "Run all tests: Rust unit tests and JS/TS unit tests"
+depends = ["test-rust", "test-unit"]
+
+[tasks.lint]
+description = "Run ESLint on the TypeScript source"
+run = "npm run lint"
+dir = "app"
+
+[tasks.audit]
+description = "Run npm audit to check for known vulnerabilities in dependencies"
+run = "npm audit"
+dir = "app"
+
+[tasks.check]
+description = "Fast pre-build check: cargo check (wasm32) + npm audit"
+depends = ["check-rust", "audit"]
+
+[tasks.check-rust]
+description = "Check Rust crate compiles for wasm32 without running a full wasm-pack build"
+run = "cargo check --target wasm32-unknown-unknown"
+dir = "crate"
+
+[tasks.format]
+description = "Format all source files with Prettier"
+run = "npm run format"
+dir = "app"
+
+[tasks.typecheck]
+description = "Type-check the TypeScript source without emitting"
+run = "npm run typecheck"
+dir = "app"

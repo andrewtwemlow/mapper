@@ -1,0 +1,33 @@
+# Rust / wasm-pack
+crate/target/
+# Guard against CARGO_TARGET_DIR resolving incorrectly when cargo is run from
+# inside the crate/ directory, which would produce a nested crate/crate/target/
+crate/crate/
+app/src/wasm-pkg/
+*.wasm
+
+# Node / frontend
+node_modules/
+app/node_modules/
+app/dist/
+tests/unit/node_modules/
+tests/e2e/node_modules/
+.vite/
+
+# Playwright
+tests/e2e/playwright-report/
+tests/e2e/test-results/
+
+# mise
+.mise.local.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+*.swp
+
+v1/
+test-data/
