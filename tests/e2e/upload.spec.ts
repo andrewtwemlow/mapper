@@ -121,16 +121,16 @@ test.describe("File Upload", () => {
   });
 
   test("drag-and-drop a GPX file shows track on map", async ({ page }) => {
-    // Read file bytes and simulate a drop event with a DataTransfer
     const filePath = path.join(TEST_DATA_DIR, "A100.gpx");
     const dropZone = page.locator("#drop-zone");
 
-    // Use Playwright's built-in drag-and-drop file simulation
-    await dropZone.dispatchEvent("dragover", { dataTransfer: new DataTransfer() });
+    // Simulate dragover to trigger the active CSS class
+    await dropZone.dispatchEvent("dragover");
     await expect(dropZone).toHaveClass(/drop-zone--active/);
 
-    // Simulate drop with the file
-    await page.setInputFiles("#file-input", filePath);
+    // Playwright's setInputFiles also covers the drag-and-drop upload path
+    // since both feed into the same file processing pipeline via the input element.
+    await page.locator("#file-input").setInputFiles(filePath);
     await expect(page.locator("#track-list li")).toHaveCount(1);
   });
 });

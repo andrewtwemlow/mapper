@@ -9,7 +9,7 @@ description: Test strategy, Playwright setup, Vitest configuration, and requirem
 ## Layers
 
 | Layer | Tool | Location | When run |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Rust unit tests | `cargo test` | `crate/src/` (`#[cfg(test)]`) | pre-commit, CI |
 | JS/TS unit tests | Vitest 4 | `tests/unit/` | pre-commit, CI |
 | End-to-end / browser | Playwright | `tests/e2e/` | CI, on-demand locally |
@@ -89,6 +89,23 @@ Test files are saved permanently in `tests/e2e/` and committed to the repository
 ### Required E2E Test Scenarios
 
 Each scenario below maps to a test file in `tests/e2e/`. When implementing or updating tests, verify each scenario matches the current documented requirements.
+
+#### `health.spec.ts` — Health Endpoint
+
+> **Requires the Docker container, not the Vite preview server.** Run with `BASE_URL=http://localhost:8080`.
+
+- [ ] `GET /health` returns `200 OK`.
+- [ ] `GET /health` response has `Content-Type: application/json`.
+- [ ] `GET /health` body is `{"status":"ok"}`.
+
+**Running against Docker:**
+
+```bash
+docker build -t gpx-mapper .
+docker run -d -p 8080:80 --name gpx-mapper-test gpx-mapper
+BASE_URL=http://localhost:8080 npx playwright test health.spec.ts
+docker rm -f gpx-mapper-test
+```
 
 #### `upload.spec.ts` — File Upload
 
@@ -172,6 +189,7 @@ export default defineConfig({
 Sample files for tests live in `test-data/` at the repo root. Use these files in both Rust tests (via file path) and Playwright tests (via fixture upload).
 
 Available test data:
+
 - `test-data/A100.gpx` — GPX file
 - `test-data/CW50.gpx` — GPX file
 - `test-data/10743961743.fit.gz` — FIT (gzipped)

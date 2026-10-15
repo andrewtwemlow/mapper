@@ -52,6 +52,10 @@ const DEFAULT_COLOURS_JSON: &str = r##"["#1f77b4","#ff7f0e","#2ca02c","#d62728",
 /// Returns [`MapperError::Serialise`] if track data cannot be serialised to JSON.
 pub fn generate(tracks: &[Track]) -> Result<String, MapperError> {
     let tracks_json = serialise_tracks(tracks)?;
+    // JSON-encode the attribution so embedded quotes in href attributes are
+    // safely escaped when inserted into the JS string literal.
+    let attribution_json = serde_json::to_string(TILE_ATTRIBUTION)
+        .map_err(|e| MapperError::Serialise(e.to_string()))?;
 
     Ok(format!(
         r#"<!DOCTYPE html>
@@ -100,7 +104,7 @@ pub fn generate(tracks: &[Track]) -> Result<String, MapperError> {
       }}
     }};
 
-    var ATTRIBUTION = "{attribution}";
+    var ATTRIBUTION = {attribution_json};
     var DEFAULT_COLOURS = {colours_json};
 
     // Initialise the map centred on the track data bounds
@@ -140,7 +144,7 @@ pub fn generate(tracks: &[Track]) -> Result<String, MapperError> {
         dark_matter_no_labels = TILE_DARK_MATTER_NO_LABELS,
         positron = TILE_POSITRON,
         voyager = TILE_VOYAGER,
-        attribution = TILE_ATTRIBUTION,
+        attribution_json = attribution_json,
         colours_json = DEFAULT_COLOURS_JSON,
     ))
 }

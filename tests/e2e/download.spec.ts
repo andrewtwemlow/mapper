@@ -10,7 +10,7 @@ import { fileURLToPath } from "url";
 
 /** Absolute path to the shared test data directory. */
 const TEST_DATA_DIR = path.resolve(
-  fileURLToPath(import.meta.url),
+  path.dirname(fileURLToPath(import.meta.url)),
   "../../test-data",
 );
 
@@ -75,12 +75,16 @@ test.describe("Downloads", () => {
     /** Number of files uploaded in this test — must match the trk count assertion. */
     const UPLOAD_COUNT = 2;
 
+    // Upload files sequentially, waiting for each track to appear before the next
     await page.locator("#file-input").setInputFiles(
       path.join(TEST_DATA_DIR, "A100.gpx"),
     );
+    await expect(page.locator("#track-list li")).toHaveCount(1);
+
     await page.locator("#file-input").setInputFiles(
       path.join(TEST_DATA_DIR, "CW50.gpx"),
     );
+    await expect(page.locator("#track-list li")).toHaveCount(UPLOAD_COUNT);
 
     const gpxLink = page.locator("a.download-link[download='tracks.gpx']");
     const href = await gpxLink.getAttribute("href");
@@ -160,18 +164,27 @@ test.describe("Downloads", () => {
     const href = await htmlLink.getAttribute("href");
     expect(href).toBeTruthy();
 
-    // Fetch the HTML content and open it in a new page via data URL
+    // Fetch the HTML content from the blob URL
     const content = await page.evaluate(async (url: string) => {
       const response = await fetch(url);
       return response.text();
     }, href!);
 
+    // Use a dedicated test route to serve the exported HTML — Vite preview uses
+    // SPA fallback so all unmatched routes return index.html, meaning we can't
+    // write the file to dist/. Instead intercept a known test URL.
     const exportedPage = await context.newPage();
-    await exportedPage.setContent(content);
+    await exportedPage.route("**/exported-map-test.html", (route) => {
+      route.fulfill({
+        contentType: "text/html",
+        body: content,
+      });
+    });
+    await exportedPage.goto("http://localhost:4173/exported-map-test.html");
 
     // The exported map should initialise a Leaflet container
     await expect(exportedPage.locator(".leaflet-container")).toBeVisible({
-      timeout: 10_000, // 10 seconds — allow time for Leaflet to initialise
+      timeout: 15_000, // 15 seconds — allow time for Leaflet CDN script to load
     });
 
     await exportedPage.close();

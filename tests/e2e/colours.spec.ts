@@ -10,7 +10,7 @@ import { fileURLToPath } from "url";
 
 /** Absolute path to the shared test data directory. */
 const TEST_DATA_DIR = path.resolve(
-  fileURLToPath(import.meta.url),
+  path.dirname(fileURLToPath(import.meta.url)),
   "../../test-data",
 );
 

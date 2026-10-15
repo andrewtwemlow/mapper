@@ -83,13 +83,17 @@ inclusion: always
 ### ES module compatibility
 
 - All TypeScript files use `"type": "module"` — never use CommonJS-only globals.
-- **Never use `__dirname` or `__filename`** — these are not defined in ES modules. Use `fileURLToPath(import.meta.url)` with `path.resolve` instead:
+- **Never use `__dirname` or `__filename`** — these are not defined in ES modules. Use `path.dirname(fileURLToPath(import.meta.url))` instead:
 
   ```typescript
   import { fileURLToPath } from "url";
   import path from "path";
-  const DIR = path.resolve(fileURLToPath(import.meta.url), "..");
+  // import.meta.url is the file path itself — dirname gets the containing folder
+  const DIR = path.dirname(fileURLToPath(import.meta.url));
+  const DATA = path.resolve(DIR, "../../test-data");
   ```
+
+  **Common mistake:** `path.resolve(fileURLToPath(import.meta.url), "../..")` resolves relative to the *file*, not its directory — the first `..` strips the filename, giving unexpected results. Always call `path.dirname()` first.
 
 ### Module conventions
 

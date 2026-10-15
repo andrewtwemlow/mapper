@@ -107,6 +107,13 @@ mise run docker-run
 
 Open `http://localhost:8080`.
 
+The container exposes a `/health` endpoint for liveness and readiness probes:
+
+```bash
+curl http://localhost:8080/health
+# {"status":"ok"}
+```
+
 ---
 
 ## All available tasks
@@ -122,7 +129,8 @@ Open `http://localhost:8080`.
 | `mise run test` | Run Rust + JS/TS unit tests |
 | `mise run test-rust` | Run Rust unit tests only |
 | `mise run test-unit` | Run Vitest unit tests only |
-| `mise run test-e2e` | Run Playwright E2E tests |
+| `mise run test-e2e` | Run Playwright E2E tests (upload, map, colours, downloads, a11y) |
+| `mise run test-e2e-docker` | Run health endpoint test against the Docker container |
 | `mise run lint` | ESLint on TypeScript source |
 | `mise run audit` | Check npm dependencies for vulnerabilities |
 | `mise run check` | Fast pre-build: `cargo check` (wasm32) + `npm audit` |
