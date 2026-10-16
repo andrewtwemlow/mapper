@@ -4,9 +4,9 @@ npm = "latest"
 rust = "stable"
 pre-commit = "latest"
 gh = "latest"
+"aqua:wasm-bindgen/wasm-pack" = "0.15.0"
 
 [env]
-# wasm-pack is installed via cargo, not mise — see README for setup instructions
 # Use an absolute path so CARGO_TARGET_DIR resolves correctly regardless of
 # which directory cargo/wasm-pack is invoked from.
 CARGO_TARGET_DIR = "{{config_root}}/crate/target"

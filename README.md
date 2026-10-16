@@ -26,13 +26,7 @@ curl https://mise.run | sh
 mise install
 ```
 
-This installs: **Node.js 22**, **Rust (stable)**, **pre-commit**, **gh**.
-
-wasm-pack is installed separately via cargo (mise does not provide it):
-
-```bash
-cargo install wasm-pack
-```
+This installs: **Node.js 22**, **Rust (stable)**, **wasm-pack**, **pre-commit**, **gh**.
 
 ---
 
