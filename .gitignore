@@ -31,3 +31,5 @@ Thumbs.db
 
 v1/
 test-data/
+
+.env

@@ -41,21 +41,45 @@ const TILE_ATTRIBUTION: &str =
 /// Uses `r##` delimiters because the string contains `#` characters.
 const DEFAULT_COLOURS_JSON: &str = r##"["#1f77b4","#ff7f0e","#2ca02c","#d62728","#6d20b6","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"]"##;
 
+/// Append a CARTO API key query parameter to a tile URL template.
+///
+/// CartoDB uses `?key=<value>` as the authentication query parameter.
+/// When `api_key` is non-empty the key is appended as `?key=<key>`.
+/// Returns the URL unchanged when `api_key` is empty or whitespace-only.
+fn apply_api_key(url: &str, api_key: &str) -> String {
+    let key = api_key.trim();
+    if key.is_empty() {
+        url.to_owned()
+    } else {
+        format!("{url}?key={key}")
+    }
+}
+
 /// Generate a self-contained HTML map document from a slice of [`Track`] values.
 ///
 /// The output is a complete HTML5 document that can be saved as a `.html` file
 /// and opened in any modern browser. It embeds all track data as JSON and loads
 /// Leaflet from CDN, so sharing the file requires only network access for tiles.
 ///
+/// When `carto_api_key` is non-empty it is appended as a query parameter to
+/// every CartoDB tile URL in the exported document. Pass an empty string if no
+/// key is available.
+///
 /// # Errors
 ///
 /// Returns [`MapperError::Serialise`] if track data cannot be serialised to JSON.
-pub fn generate(tracks: &[Track]) -> Result<String, MapperError> {
+pub fn generate(tracks: &[Track], carto_api_key: &str) -> Result<String, MapperError> {
     let tracks_json = serialise_tracks(tracks)?;
     // JSON-encode the attribution so embedded quotes in href attributes are
     // safely escaped when inserted into the JS string literal.
     let attribution_json = serde_json::to_string(TILE_ATTRIBUTION)
         .map_err(|e| MapperError::Serialise(e.to_string()))?;
+
+    // Apply the API key to each tile URL (no-op when the key is empty).
+    let dark_matter = apply_api_key(TILE_DARK_MATTER, carto_api_key);
+    let dark_matter_no_labels = apply_api_key(TILE_DARK_MATTER_NO_LABELS, carto_api_key);
+    let positron = apply_api_key(TILE_POSITRON, carto_api_key);
+    let voyager = apply_api_key(TILE_VOYAGER, carto_api_key);
 
     Ok(format!(
         r#"<!DOCTYPE html>
@@ -140,10 +164,10 @@ pub fn generate(tracks: &[Track]) -> Result<String, MapperError> {
         leaflet_css = LEAFLET_CSS_URL,
         leaflet_js = LEAFLET_JS_URL,
         tracks_json = tracks_json,
-        dark_matter = TILE_DARK_MATTER,
-        dark_matter_no_labels = TILE_DARK_MATTER_NO_LABELS,
-        positron = TILE_POSITRON,
-        voyager = TILE_VOYAGER,
+        dark_matter = dark_matter,
+        dark_matter_no_labels = dark_matter_no_labels,
+        positron = positron,
+        voyager = voyager,
         attribution_json = attribution_json,
         colours_json = DEFAULT_COLOURS_JSON,
     ))
@@ -196,19 +220,19 @@ mod tests {
 
     #[test]
     fn generate_contains_leaflet_css_cdn_reference() {
-        let html = generate(&sample_tracks()).unwrap();
+        let html = generate(&sample_tracks(), "").unwrap();
         assert!(html.contains(LEAFLET_CSS_URL));
     }
 
     #[test]
     fn generate_contains_leaflet_js_cdn_reference() {
-        let html = generate(&sample_tracks()).unwrap();
+        let html = generate(&sample_tracks(), "").unwrap();
         assert!(html.contains(LEAFLET_JS_URL));
     }
 
     #[test]
     fn generate_contains_track_data_script_block() {
-        let html = generate(&sample_tracks()).unwrap();
+        let html = generate(&sample_tracks(), "").unwrap();
         assert!(html.contains("var TRACK_DATA ="));
         assert!(html.contains("run_a"));
         assert!(html.contains("run_b"));
@@ -216,7 +240,7 @@ mod tests {
 
     #[test]
     fn generate_contains_all_carto_tile_urls() {
-        let html = generate(&sample_tracks()).unwrap();
+        let html = generate(&sample_tracks(), "").unwrap();
         assert!(html.contains(TILE_DARK_MATTER));
         assert!(html.contains(TILE_DARK_MATTER_NO_LABELS));
         assert!(html.contains(TILE_POSITRON));
@@ -225,22 +249,65 @@ mod tests {
 
     #[test]
     fn generate_contains_attribution() {
-        let html = generate(&sample_tracks()).unwrap();
+        let html = generate(&sample_tracks(), "").unwrap();
         assert!(html.contains("CARTO"));
         assert!(html.contains("OpenStreetMap"));
     }
 
     #[test]
     fn generate_empty_tracks_produces_valid_html() {
-        let html = generate(&[]).unwrap();
+        let html = generate(&[], "").unwrap();
         assert!(html.contains("<!DOCTYPE html>"));
         assert!(html.contains("var TRACK_DATA = []"));
     }
 
     #[test]
     fn generate_embeds_coordinate_data() {
-        let html = generate(&sample_tracks()).unwrap();
+        let html = generate(&sample_tracks(), "").unwrap();
         assert!(html.contains("51.5"));
         assert!(html.contains("-0.1"));
+    }
+
+    #[test]
+    fn generate_without_api_key_uses_plain_tile_urls() {
+        let html = generate(&sample_tracks(), "").unwrap();
+        // Tile URLs must not have a query string when no key is provided.
+        assert!(html.contains(TILE_DARK_MATTER));
+        assert!(!html.contains("?key="));
+    }
+
+    #[test]
+    fn generate_with_api_key_appends_key_to_all_tile_urls() {
+        let key = "test_api_key_123";
+        let html = generate(&sample_tracks(), key).unwrap();
+        // Every tile URL variant should carry the key.
+        assert!(html.contains(&format!("{}?key={}", TILE_DARK_MATTER, key)));
+        assert!(html.contains(&format!("{}?key={}", TILE_DARK_MATTER_NO_LABELS, key)));
+        assert!(html.contains(&format!("{}?key={}", TILE_POSITRON, key)));
+        assert!(html.contains(&format!("{}?key={}", TILE_VOYAGER, key)));
+    }
+
+    #[test]
+    fn generate_with_whitespace_only_key_uses_plain_tile_urls() {
+        let html = generate(&sample_tracks(), "   ").unwrap();
+        assert!(!html.contains("?key="));
+    }
+
+    #[test]
+    fn apply_api_key_empty_returns_url_unchanged() {
+        assert_eq!(apply_api_key("https://example.com/tiles", ""), "https://example.com/tiles");
+    }
+
+    #[test]
+    fn apply_api_key_whitespace_returns_url_unchanged() {
+        assert_eq!(apply_api_key("https://example.com/tiles", "  "), "https://example.com/tiles");
+    }
+
+    #[test]
+    fn apply_api_key_appends_query_param() {
+        assert_eq!(
+            apply_api_key("https://example.com/tiles", "mykey"),
+            "https://example.com/tiles?key=mykey"
+        );
     }
 }

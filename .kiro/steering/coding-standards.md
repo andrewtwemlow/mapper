@@ -42,6 +42,19 @@ inclusion: always
 
 - This pattern is especially common with `quick-xml` event names and any method returning an owned value that is immediately borrowed.
 
+### wasm-pack generated declarations
+
+The `wasm-pack build` command regenerates `app/src/wasm-pkg/gpx_mapper.d.ts` on every build. The generated file uses `any` as the return type for `parse_gpx`, `parse_fit`, and `parse_tcx`. This must be manually corrected to `unknown` after every wasm-pack run:
+
+```bash
+# After wasm-pack build, fix the any returns:
+sed -i 's/): any;/): unknown;/g' app/src/wasm-pkg/gpx_mapper.d.ts
+```
+
+**Why:** wasm-pack does not know the TypeScript type of the `JsValue` returned across the Wasm boundary, so it emits `any`. The project standard is `unknown` with explicit narrowing (the cast to `ParsedTrack` happens in `wasm.ts` with a safety comment).
+
+**Reminder:** When adding a new Wasm export that returns `JsValue`, the generated declaration will also use `any` — correct it after rebuilding.
+
 ### Wasm / wasm-bindgen
 
 - All public Wasm exports must be annotated with `#[wasm_bindgen]`.

@@ -5,14 +5,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
-
-/** Absolute path to the shared test data directory. */
-const TEST_DATA_DIR = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../test-data",
-);
+import { gpxFiles } from "./test-data.js";
 
 test.describe("Accessibility", () => {
   test.beforeEach(async ({ page }) => {
@@ -33,7 +26,6 @@ test.describe("Accessibility", () => {
     const dropZone = page.locator("#drop-zone");
     await expect(dropZone).toHaveAttribute("tabindex", "0");
 
-    // Focus it and press Enter — should open the file picker (no error thrown)
     await dropZone.focus();
     await expect(dropZone).toBeFocused();
   });
@@ -46,9 +38,8 @@ test.describe("Accessibility", () => {
   });
 
   test("track list items have accessible labels after upload", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    const file = gpxFiles()[0];
+    await page.locator("#file-input").setInputFiles(file);
 
     // Each colour picker in the track list must have an aria-label
     const pickers = page.locator("#track-list li input[type=color]");
@@ -56,14 +47,13 @@ test.describe("Accessibility", () => {
 
     const label = await pickers.first().getAttribute("aria-label");
     expect(label?.length).toBeGreaterThan(0);
-    expect(label).toContain("A100");
   });
 
   test("colour pickers have accessible labels", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles([
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-      path.join(TEST_DATA_DIR, "CW50.gpx"),
-    ]);
+    const files = gpxFiles();
+    test.skip(files.length < 2, "Need at least 2 GPX files in test-data/");
+
+    await page.locator("#file-input").setInputFiles([files[0], files[1]]);
 
     const pickers = page.locator("#track-list li input[type=color]");
     await expect(pickers).toHaveCount(2);
@@ -79,9 +69,7 @@ test.describe("Accessibility", () => {
   });
 
   test("download links have descriptive accessible names", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
 
     const downloadLinks = page.locator("a.download-link");
     await expect(downloadLinks).toHaveCount(2);
@@ -107,5 +95,24 @@ test.describe("Accessibility", () => {
     // The <main> wrapping the map should have aria-label
     const mapArea = page.locator("main.map-area");
     await expect(mapArea).toHaveAttribute("aria-label");
+  });
+
+  test("CartoDB API key input has an accessible label", async ({ page }) => {
+    const input = page.locator("#carto-api-key");
+    await expect(input).toHaveAttribute("aria-label");
+    const label = await input.getAttribute("aria-label");
+    expect(label?.length).toBeGreaterThan(0);
+  });
+
+  test("API key info button has an accessible label", async ({ page }) => {
+    const btn = page.locator(".api-key-field__info-btn");
+    await expect(btn).toHaveAttribute("aria-label");
+    const label = await btn.getAttribute("aria-label");
+    expect(label?.length).toBeGreaterThan(0);
+  });
+
+  test("API key tooltip has role=tooltip", async ({ page }) => {
+    const tooltip = page.locator("#api-key-tooltip");
+    await expect(tooltip).toHaveAttribute("role", "tooltip");
   });
 });

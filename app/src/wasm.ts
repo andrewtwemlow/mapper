@@ -117,13 +117,16 @@ export function generateCombinedGpx(tracks: ParsedTrack[]): string {
  * Generate a self-contained HTML map document from an array of parsed tracks.
  *
  * The output embeds all track data inline and references Leaflet from CDN.
+ * When `cartoApiKey` is non-empty it is appended to every CartoDB tile URL
+ * in the exported document so the map renders correctly after download.
  *
  * @param tracks - Array of parsed tracks to render.
+ * @param cartoApiKey - CartoDB API key to embed in tile URLs. Pass `""` if none.
  * @returns An HTML document string.
  * @throws If serialisation fails.
  */
-export function generateMapHtml(tracks: ParsedTrack[]): string {
-  return generate_map_html(JSON.stringify(tracks));
+export function generateMapHtml(tracks: ParsedTrack[], cartoApiKey: string): string {
+  return generate_map_html(JSON.stringify(tracks), cartoApiKey);
 }
 
 /**

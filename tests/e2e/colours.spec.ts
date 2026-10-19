@@ -5,14 +5,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
-
-/** Absolute path to the shared test data directory. */
-const TEST_DATA_DIR = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../test-data",
-);
+import { gpxFiles } from "./test-data.js";
 
 /**
  * Expected default colours for the first two tracks.
@@ -34,32 +27,25 @@ test.describe("Track Colours", () => {
   });
 
   test("each uploaded track has a colour picker in the track list", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
 
     await expect(page.locator("#track-list li")).toHaveCount(1);
-    await expect(
-      page.locator("#track-list li input[type=color]"),
-    ).toHaveCount(1);
+    await expect(page.locator("#track-list li input[type=color]")).toHaveCount(1);
   });
 
   test("first track colour picker defaults to first palette colour", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
 
     const picker = page.locator("#track-list li input[type=color]").first();
     await expect(picker).toHaveValue(PALETTE_COLOUR_0);
   });
 
   test("second track colour picker defaults to second palette colour", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "CW50.gpx"),
-    );
+    const files = gpxFiles();
+    test.skip(files.length < 2, "Need at least 2 GPX files in test-data/");
+
+    await page.locator("#file-input").setInputFiles(files[0]);
+    await page.locator("#file-input").setInputFiles(files[1]);
 
     const pickers = page.locator("#track-list li input[type=color]");
     await expect(pickers.nth(0)).toHaveValue(PALETTE_COLOUR_0);
@@ -67,13 +53,10 @@ test.describe("Track Colours", () => {
   });
 
   test("changing colour picker updates polyline colour on map", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
 
     const picker = page.locator("#track-list li input[type=color]").first();
 
-    // Change the colour to red
     await picker.evaluate(
       (el: HTMLInputElement, colour: string) => {
         el.value = colour;
@@ -82,17 +65,16 @@ test.describe("Track Colours", () => {
       TEST_COLOUR_RED,
     );
 
-    // The polyline stroke should now be red
     const polyline = page.locator(".leaflet-overlay-pane path").first();
     const stroke = await polyline.getAttribute("stroke");
     expect(stroke?.toLowerCase()).toBe(TEST_COLOUR_RED);
   });
 
   test("colour change persists after uploading additional tracks", async ({ page }) => {
-    // Upload first track and change its colour
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    const files = gpxFiles();
+    test.skip(files.length < 2, "Need at least 2 GPX files in test-data/");
+
+    await page.locator("#file-input").setInputFiles(files[0]);
 
     const firstPicker = page.locator("#track-list li input[type=color]").first();
     await firstPicker.evaluate(
@@ -103,10 +85,7 @@ test.describe("Track Colours", () => {
       TEST_COLOUR_GREEN,
     );
 
-    // Upload a second track
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "CW50.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(files[1]);
 
     // First track's colour should still be the custom colour
     const updatedFirstPicker = page

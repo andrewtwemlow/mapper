@@ -1,5 +1,6 @@
 /**
- * File upload UI, track list, colour picker, tile selector, and download links.
+ * File upload UI, track list, colour picker, tile selector, API key input,
+ * and download links.
  *
  * Owns all DOM interaction outside the Leaflet map container. Communicates
  * with the map via the {@link MapHandle} interface and with the Wasm layer
@@ -29,6 +30,13 @@ const HTML_MIME_TYPE = "text/html";
 /** CSS class applied to the upload drop zone when a drag is active. */
 const DRAG_ACTIVE_CLASS = "drop-zone--active";
 
+/**
+ * Debounce delay in milliseconds for the API key input.
+ * Waits for the user to stop typing before applying the key to avoid
+ * hammering CartoDB with repeated tile requests on every keystroke.
+ */
+const API_KEY_DEBOUNCE_MS = 600;
+
 /** All tracks parsed so far in the current session, in upload order. */
 let tracks: ParsedTrack[] = [];
 
@@ -40,6 +48,7 @@ let tracks: ParsedTrack[] = [];
  * @param mapHandle - The map handle returned by `initMap`.
  */
 export function initUI(mapHandle: MapHandle): void {
+  setupApiKeyInput(mapHandle);
   setupDropZone(mapHandle);
   setupTileSelector(mapHandle);
 }
@@ -51,9 +60,9 @@ export function initUI(mapHandle: MapHandle): void {
  * in the DOM when Leaflet attempts to mount into it. Called directly from
  * `main.ts` before the map is initialised.
  *
- * Builds the static HTML structure: upload area, track list, tile selector,
- * and download section. All dynamic content is injected into named slots
- * within this structure.
+ * Builds the static HTML structure: API key input, upload area, track list,
+ * tile selector, and download section. All dynamic content is injected into
+ * named slots within this structure.
  */
 export function renderAppShell(): void {
   const app = document.getElementById("app");
@@ -65,6 +74,39 @@ export function renderAppShell(): void {
         <header class="sidebar__header">
           <h1 class="sidebar__title">GPX Mapper</h1>
         </header>
+
+        <section class="sidebar__section" aria-labelledby="apikey-heading">
+          <h2 id="apikey-heading" class="sidebar__section-title">CartoDB API Key</h2>
+          <div class="api-key-field">
+            <div class="api-key-field__input-row">
+              <label for="carto-api-key" class="visually-hidden">CartoDB API key</label>
+              <input
+                id="carto-api-key"
+                type="text"
+                class="api-key-field__input"
+                placeholder="Enter your CartoDB API key"
+                aria-label="CartoDB API key"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button
+                class="api-key-field__info-btn"
+                aria-label="API key security information"
+                aria-describedby="api-key-tooltip"
+                type="button"
+              >?</button>
+            </div>
+            <div
+              id="api-key-tooltip"
+              class="api-key-field__tooltip"
+              role="tooltip"
+            >
+              Your API key will be embedded in the downloaded HTML map file.
+              Caution: anyone with the file can read the key. Do not share the
+              downloaded map if you want to keep your key private.
+            </div>
+          </div>
+        </section>
 
         <section class="sidebar__section" aria-labelledby="upload-heading">
           <h2 id="upload-heading" class="sidebar__section-title">Upload Files</h2>
@@ -122,6 +164,52 @@ export function renderAppShell(): void {
       </main>
     </div>
   `;
+}
+
+/**
+ * Set up the CartoDB API key input with debounced application to the map and
+ * tooltip toggle behaviour on the info button.
+ *
+ * The key is applied to the map tile layer after the user stops typing for
+ * {@link API_KEY_DEBOUNCE_MS} ms to avoid repeated tile requests mid-entry.
+ * Download links are regenerated whenever the key changes so the exported
+ * HTML always embeds the current key.
+ *
+ * @param mapHandle - Used to call `setApiKey` once the debounce settles.
+ */
+function setupApiKeyInput(mapHandle: MapHandle): void {
+  const input = document.getElementById("carto-api-key") as HTMLInputElement | null;
+  const infoBtn = document.querySelector(".api-key-field__info-btn") as HTMLButtonElement | null;
+  const tooltip = document.getElementById("api-key-tooltip");
+
+  if (!input || !infoBtn || !tooltip) return;
+
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  input.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      mapHandle.setApiKey(input.value);
+      updateDownloads(mapHandle);
+    }, API_KEY_DEBOUNCE_MS);
+  });
+
+  // Toggle tooltip visibility on info button click.
+  infoBtn.addEventListener("click", () => {
+    const isVisible = tooltip.classList.toggle("api-key-field__tooltip--visible");
+    infoBtn.setAttribute("aria-expanded", String(isVisible));
+  });
+
+  // Dismiss tooltip when focus leaves the entire api-key-field block.
+  input.addEventListener("blur", () => {
+    // Small delay so a click on the info button is processed first.
+    setTimeout(() => {
+      if (document.activeElement !== infoBtn) {
+        tooltip.classList.remove("api-key-field__tooltip--visible");
+        infoBtn.setAttribute("aria-expanded", "false");
+      }
+    }, 150);
+  });
 }
 
 /**
@@ -207,7 +295,7 @@ function processFiles(files: FileList, mapHandle: MapHandle): void {
         mapHandle.addTrack(trackWithColour);
         mapHandle.fitTracks();
         addTrackToList(trackWithColour, mapHandle);
-        updateDownloads();
+        updateDownloads(mapHandle);
       })
       .catch((err: unknown) => {
         showError(`Failed to parse "${file.name}": ${String(err)}`);
@@ -297,7 +385,7 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
       tracks[idx] = { ...tracks[idx], colour: picker.value } as ParsedTrack;
     }
     mapHandle.setTrackColour(track.name, picker.value);
-    updateDownloads();
+    updateDownloads(mapHandle);
   });
 
   list.appendChild(item);
@@ -308,8 +396,11 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
  *
  * Revokes any previously created object URLs to avoid memory leaks, then
  * generates fresh Blob URLs for the combined GPX and HTML map downloads.
+ * The current CartoDB API key from the map handle is embedded in the HTML export.
+ *
+ * @param mapHandle - Used to read the current API key for the HTML export.
  */
-function updateDownloads(): void {
+function updateDownloads(mapHandle: MapHandle): void {
   const section = document.getElementById("download-section");
   if (!section) return;
 
@@ -325,7 +416,7 @@ function updateDownloads(): void {
 
   try {
     const gpxContent = generateCombinedGpx(tracks);
-    const htmlContent = generateMapHtml(tracks);
+    const htmlContent = generateMapHtml(tracks, mapHandle.getApiKey());
 
     const gpxUrl = URL.createObjectURL(new Blob([gpxContent], { type: GPX_MIME_TYPE }));
     const htmlUrl = URL.createObjectURL(new Blob([htmlContent], { type: HTML_MIME_TYPE }));

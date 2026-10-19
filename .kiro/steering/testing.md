@@ -147,10 +147,39 @@ docker rm -f gpx-mapper-test
 #### `accessibility.spec.ts` — Accessibility
 
 - [ ] Upload area has an accessible label.
-- [ ] Track list items have accessible labels.
+- [ ] Upload area is keyboard focusable (`tabindex="0"`) and operable.
+- [ ] Track list items have accessible labels after upload.
 - [ ] Colour pickers have accessible labels.
 - [ ] Tile style selector has an accessible label.
 - [ ] Download links have descriptive accessible names.
+- [ ] Error messages have `role="alert"` and `aria-live="polite"`.
+- [ ] Map container has an accessible label.
+- [ ] CartoDB API key input has an accessible label.
+- [ ] API key info button has an accessible label.
+- [ ] API key tooltip has `role="tooltip"`.
+
+#### `carto.spec.ts` — CartoDB API Key
+
+> See also `.kiro/steering/carto-api.md` for full API reference.
+> Live tile tests require `CARTO_API_KEY` set in the environment; they skip automatically when absent.
+
+- [ ] API key input field is visible on page load.
+- [ ] API key input has correct accessible label.
+- [ ] API key section has a section heading.
+- [ ] Info button is visible next to the input and has an accessible label.
+- [ ] Tooltip is hidden by default.
+- [ ] Clicking the info button reveals the tooltip.
+- [ ] Tooltip contains the security warning text ("embedded", "Caution").
+- [ ] Clicking the info button again hides the tooltip.
+- [ ] Without API key, tile URLs have no `key=` query parameter.
+- [ ] With API key, tile URLs contain `?key=<value>`.
+- [ ] Clearing the key reverts tile URLs to plain CartoDB URLs.
+- [ ] Switching tile style after entering a key preserves `?key=` in new URLs.
+- [ ] *(live, requires `CARTO_API_KEY`)* Tile request with real key returns HTTP 200.
+- [ ] Without API key, downloaded HTML contains no `key=` in tile URLs.
+- [ ] With API key, downloaded HTML embeds `?key=<value>` in all four tile style variants.
+- [ ] Changing the key after upload regenerates the download with the new key.
+- [ ] App remains fully functional (upload, map, downloads) without an API key.
 
 ---
 
@@ -186,16 +215,37 @@ export default defineConfig({
 
 ## Test Data
 
-Sample files for tests live in `test-data/` at the repo root. Use these files in both Rust tests (via file path) and Playwright tests (via fixture upload).
+Sample files for tests live in `test-data/` at the repo root. Filenames are not stable — never hardcode them in test files.
 
-Available test data:
+### `tests/e2e/test-data.ts` helper
 
-- `test-data/A100.gpx` — GPX file
-- `test-data/CW50.gpx` — GPX file
-- `test-data/10743961743.fit.gz` — FIT (gzipped)
-- `test-data/10891936787.fit.gz` — FIT (gzipped)
-- `test-data/9731596976.tcx.gz` — TCX (gzipped)
-- `test-data/9731618880.tcx.gz` — TCX (gzipped)
+All E2E specs import from this shared helper instead of referencing filenames directly:
+
+```typescript
+import { gpxFiles, fitGzFiles, tcxGzFiles, fileStem, TEST_DATA_DIR } from "./test-data.js";
+
+// First available GPX file — full absolute path, ready for setInputFiles()
+const file = gpxFiles()[0];
+
+// Derive the track name the app will use (filename without extension)
+const stem = fileStem(file);
+```
+
+The helper reads the directory at runtime using `fs.readdirSync` and returns sorted arrays of absolute paths filtered by extension. When a format has no files, the array is empty and tests must skip gracefully:
+
+```typescript
+test("upload a FIT.GZ file", async ({ page }) => {
+  const files = fitGzFiles();
+  test.skip(files.length === 0, "No .fit.gz files in test-data/");
+  // ...
+});
+```
+
+**Rules:**
+- Never hardcode a filename from `test-data/` in a spec file.
+- Use `gpxFiles()[0]` / `gpxFiles()[1]` for first/second file; guard with `test.skip(files.length < 2, ...)` when two are needed.
+- Use `fileStem(file)` when asserting against the track name embedded in GPX or HTML output.
+- When adding new test data files, no spec changes are needed — the helper picks them up automatically.
 
 ---
 

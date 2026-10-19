@@ -5,20 +5,25 @@
  */
 
 import { test, expect } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
-
-/** Absolute path to the shared test data directory. */
-const TEST_DATA_DIR = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../test-data",
-);
+import { gpxFiles, fileStem } from "./test-data.js";
 
 /** GPX 1.1 namespace URI expected in the combined GPX output. */
 const GPX_NAMESPACE = "http://www.topografix.com/GPX/1/1";
 
 /** Leaflet CDN hostname expected in the exported HTML map. */
 const LEAFLET_CDN_HOST = "unpkg.com";
+
+/**
+ * Number of files uploaded in the multi-track trk count test.
+ * Must match the number of files passed to setInputFiles in that test.
+ */
+const TWO_TRACKS = 2;
+
+/**
+ * Timeout in ms for the exported HTML map to initialise Leaflet from CDN.
+ * Allow extra time as the CDN script must be fetched over the network.
+ */
+const EXPORTED_MAP_TIMEOUT_MS = 15_000;
 
 test.describe("Downloads", () => {
   test.beforeEach(async ({ page }) => {
@@ -32,9 +37,7 @@ test.describe("Downloads", () => {
   });
 
   test("GPX download link present after upload", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
 
     const gpxLink = page.locator("a.download-link[download='tracks.gpx']");
     await expect(gpxLink).toBeVisible();
@@ -42,9 +45,7 @@ test.describe("Downloads", () => {
   });
 
   test("HTML map download link present after upload", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
 
     const htmlLink = page.locator("a.download-link[download='map.html']");
     await expect(htmlLink).toBeVisible();
@@ -52,11 +53,8 @@ test.describe("Downloads", () => {
   });
 
   test("downloaded GPX contains valid XML with GPX 1.1 namespace", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
 
-    // Intercept the blob URL content by reading the href and fetching it
     const gpxLink = page.locator("a.download-link[download='tracks.gpx']");
     const href = await gpxLink.getAttribute("href");
     expect(href).toBeTruthy();
@@ -72,19 +70,14 @@ test.describe("Downloads", () => {
   });
 
   test("downloaded GPX contains one trk per uploaded file", async ({ page }) => {
-    /** Number of files uploaded in this test — must match the trk count assertion. */
-    const UPLOAD_COUNT = 2;
+    const files = gpxFiles();
+    test.skip(files.length < TWO_TRACKS, "Need at least 2 GPX files in test-data/");
 
-    // Upload files sequentially, waiting for each track to appear before the next
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(files[0]);
     await expect(page.locator("#track-list li")).toHaveCount(1);
 
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "CW50.gpx"),
-    );
-    await expect(page.locator("#track-list li")).toHaveCount(UPLOAD_COUNT);
+    await page.locator("#file-input").setInputFiles(files[1]);
+    await expect(page.locator("#track-list li")).toHaveCount(TWO_TRACKS);
 
     const gpxLink = page.locator("a.download-link[download='tracks.gpx']");
     const href = await gpxLink.getAttribute("href");
@@ -95,15 +88,15 @@ test.describe("Downloads", () => {
       return response.text();
     }, href!);
 
-    // Count opening <trk> tags — should equal UPLOAD_COUNT
     const trkCount = (content.match(/<trk>/g) ?? []).length;
-    expect(trkCount).toBe(UPLOAD_COUNT);
+    expect(trkCount).toBe(TWO_TRACKS);
   });
 
   test("each trk element has a name matching the filename stem", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    const file = gpxFiles()[0];
+    const stem = fileStem(file);
+
+    await page.locator("#file-input").setInputFiles(file);
 
     const gpxLink = page.locator("a.download-link[download='tracks.gpx']");
     const href = await gpxLink.getAttribute("href");
@@ -114,13 +107,11 @@ test.describe("Downloads", () => {
       return response.text();
     }, href!);
 
-    expect(content).toContain("<name>A100</name>");
+    expect(content).toContain(`<name>${stem}</name>`);
   });
 
   test("downloaded HTML contains Leaflet CDN reference", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
 
     const htmlLink = page.locator("a.download-link[download='map.html']");
     const href = await htmlLink.getAttribute("href");
@@ -135,9 +126,10 @@ test.describe("Downloads", () => {
   });
 
   test("downloaded HTML contains embedded track data script block", async ({ page }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    const file = gpxFiles()[0];
+    const stem = fileStem(file);
+
+    await page.locator("#file-input").setInputFiles(file);
 
     const htmlLink = page.locator("a.download-link[download='map.html']");
     const href = await htmlLink.getAttribute("href");
@@ -149,30 +141,26 @@ test.describe("Downloads", () => {
     }, href!);
 
     expect(content).toContain("var TRACK_DATA =");
-    expect(content).toContain("A100");
+    expect(content).toContain(stem);
   });
 
   test("exported HTML map opens and renders in a new page", async ({
     page,
     context,
   }) => {
-    await page.locator("#file-input").setInputFiles(
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-    );
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
 
     const htmlLink = page.locator("a.download-link[download='map.html']");
     const href = await htmlLink.getAttribute("href");
     expect(href).toBeTruthy();
 
-    // Fetch the HTML content from the blob URL
     const content = await page.evaluate(async (url: string) => {
       const response = await fetch(url);
       return response.text();
     }, href!);
 
-    // Use a dedicated test route to serve the exported HTML — Vite preview uses
-    // SPA fallback so all unmatched routes return index.html, meaning we can't
-    // write the file to dist/. Instead intercept a known test URL.
+    // Serve the exported HTML via an intercepted route — Vite SPA fallback
+    // would otherwise return index.html for any unmatched path.
     const exportedPage = await context.newPage();
     await exportedPage.route("**/exported-map-test.html", (route) => {
       route.fulfill({
@@ -182,9 +170,8 @@ test.describe("Downloads", () => {
     });
     await exportedPage.goto("http://localhost:4173/exported-map-test.html");
 
-    // The exported map should initialise a Leaflet container
     await expect(exportedPage.locator(".leaflet-container")).toBeVisible({
-      timeout: 15_000, // 15 seconds — allow time for Leaflet CDN script to load
+      timeout: EXPORTED_MAP_TIMEOUT_MS,
     });
 
     await exportedPage.close();

@@ -1,17 +1,13 @@
 /**
  * Upload scenarios — verifies file upload via drag-and-drop and click-to-browse
  * for all supported formats, and error handling for unsupported/corrupt files.
+ *
+ * Format-specific tests (FIT.GZ, TCX.GZ) are skipped automatically when no
+ * files of that type are present in `test-data/`.
  */
 
 import { test, expect } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
-
-/** Absolute path to the shared test data directory. */
-const TEST_DATA_DIR = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../test-data",
-);
+import { gpxFiles, fitGzFiles, tcxGzFiles } from "./test-data.js";
 
 test.describe("File Upload", () => {
   test.beforeEach(async ({ page }) => {
@@ -22,7 +18,7 @@ test.describe("File Upload", () => {
 
   test("click-to-upload a GPX file shows track on map", async ({ page }) => {
     const fileInput = page.locator("#file-input");
-    await fileInput.setInputFiles(path.join(TEST_DATA_DIR, "A100.gpx"));
+    await fileInput.setInputFiles(gpxFiles()[0]);
 
     // A track entry should appear in the sidebar track list
     await expect(page.locator("#track-list li")).toHaveCount(1);
@@ -31,46 +27,54 @@ test.describe("File Upload", () => {
   });
 
   test("click-to-upload a second GPX file adds second track", async ({ page }) => {
+    const files = gpxFiles();
+    test.skip(files.length < 2, "Need at least 2 GPX files in test-data/");
+
     const fileInput = page.locator("#file-input");
-    await fileInput.setInputFiles(path.join(TEST_DATA_DIR, "A100.gpx"));
+    await fileInput.setInputFiles(files[0]);
     await expect(page.locator("#track-list li")).toHaveCount(1);
 
-    await fileInput.setInputFiles(path.join(TEST_DATA_DIR, "CW50.gpx"));
+    await fileInput.setInputFiles(files[1]);
     await expect(page.locator("#track-list li")).toHaveCount(2);
     await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(2);
   });
 
   test("upload a FIT.GZ file shows track on map", async ({ page }) => {
+    const files = fitGzFiles();
+    test.skip(files.length === 0, "No .fit.gz files in test-data/");
+
     const fileInput = page.locator("#file-input");
-    await fileInput.setInputFiles(path.join(TEST_DATA_DIR, "10743961743.fit.gz"));
+    await fileInput.setInputFiles(files[0]);
 
     await expect(page.locator("#track-list li")).toHaveCount(1);
     await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(1);
   });
 
   test("upload a TCX.GZ file shows track on map", async ({ page }) => {
+    const files = tcxGzFiles();
+    test.skip(files.length === 0, "No .tcx.gz files in test-data/");
+
     const fileInput = page.locator("#file-input");
-    await fileInput.setInputFiles(path.join(TEST_DATA_DIR, "9731596976.tcx.gz"));
+    await fileInput.setInputFiles(files[0]);
 
     await expect(page.locator("#track-list li")).toHaveCount(1);
     await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(1);
   });
 
   test("upload multiple files at once shows all tracks", async ({ page }) => {
+    const files = gpxFiles();
+    test.skip(files.length < 2, "Need at least 2 GPX files in test-data/");
+
     const fileInput = page.locator("#file-input");
-    await fileInput.setInputFiles([
-      path.join(TEST_DATA_DIR, "A100.gpx"),
-      path.join(TEST_DATA_DIR, "CW50.gpx"),
-    ]);
+    await fileInput.setInputFiles([files[0], files[1]]);
 
     await expect(page.locator("#track-list li")).toHaveCount(2);
     await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(2);
   });
 
   test("unsupported file type in batch does not affect valid files", async ({ page }) => {
-    // Upload one valid GPX alongside one unsupported file injected via evaluate
     const fileInput = page.locator("#file-input");
-    await fileInput.setInputFiles(path.join(TEST_DATA_DIR, "A100.gpx"));
+    await fileInput.setInputFiles(gpxFiles()[0]);
     await expect(page.locator("#track-list li")).toHaveCount(1);
 
     // Inject an unsupported file — should produce an error but leave the existing track
@@ -90,7 +94,6 @@ test.describe("File Upload", () => {
   });
 
   test("unsupported file type shows error message", async ({ page }) => {
-    // Inject an unsupported file directly via the input to trigger the error path
     await page.evaluate(() => {
       const input = document.getElementById("file-input") as HTMLInputElement;
       const file = new File(["not a gpx"], "test.txt", { type: "text/plain" });
@@ -121,7 +124,6 @@ test.describe("File Upload", () => {
   });
 
   test("drag-and-drop a GPX file shows track on map", async ({ page }) => {
-    const filePath = path.join(TEST_DATA_DIR, "A100.gpx");
     const dropZone = page.locator("#drop-zone");
 
     // Simulate dragover to trigger the active CSS class
@@ -130,7 +132,7 @@ test.describe("File Upload", () => {
 
     // Playwright's setInputFiles also covers the drag-and-drop upload path
     // since both feed into the same file processing pipeline via the input element.
-    await page.locator("#file-input").setInputFiles(filePath);
+    await page.locator("#file-input").setInputFiles(gpxFiles()[0]);
     await expect(page.locator("#track-list li")).toHaveCount(1);
   });
 });

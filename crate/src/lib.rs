@@ -78,6 +78,10 @@ pub fn generate_combined_gpx(tracks_json: &str) -> Result<String, JsValue> {
 ///
 /// `tracks_json` must be a JSON array of serialised [`Track`] objects.
 ///
+/// When `carto_api_key` is non-empty it is appended as a query parameter to
+/// every CartoDB tile URL in the exported document. Pass an empty string if no
+/// key is available.
+///
 /// Returns the HTML document as a UTF-8 string.
 ///
 /// # Errors
@@ -85,8 +89,8 @@ pub fn generate_combined_gpx(tracks_json: &str) -> Result<String, JsValue> {
 /// Returns a [`JsValue`] error if `tracks_json` cannot be deserialised or the
 /// HTML cannot be generated.
 #[wasm_bindgen]
-pub fn generate_map_html(tracks_json: &str) -> Result<String, JsValue> {
+pub fn generate_map_html(tracks_json: &str, carto_api_key: &str) -> Result<String, JsValue> {
     let tracks: Vec<Track> = serde_json::from_str(tracks_json)
         .map_err(|e| JsValue::from_str(&format!("invalid tracks JSON: {e}")))?;
-    html::generate(&tracks).map_err(|e| JsValue::from_str(&e.to_string()))
+    html::generate(&tracks, carto_api_key).map_err(|e| JsValue::from_str(&e.to_string()))
 }

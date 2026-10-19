@@ -17,7 +17,7 @@ declare const L: typeof import("leaflet");
 export interface TileLayerConfig {
   /** Human-readable label shown in the tile selector UI. */
   label: string;
-  /** Leaflet tile URL template. */
+  /** Leaflet tile URL template (without API key query parameter). */
   url: string;
   /** Attribution string required by the tile licence. */
   attribution: string;
@@ -63,6 +63,20 @@ const DEFAULT_CENTER: [number, number] = [0, 0];
 /** Default zoom level when no tracks are loaded. */
 const DEFAULT_ZOOM = 2;
 
+/**
+ * Build a CartoDB tile URL, appending the API key query parameter when present.
+ *
+ * CartoDB uses `?key=<value>` as the authentication query parameter.
+ *
+ * @param baseUrl - The tile URL template without any query string.
+ * @param apiKey - The CartoDB API key, or an empty string if not set.
+ * @returns The tile URL, with `?key=<key>` appended when the key is non-empty.
+ */
+function buildTileUrl(baseUrl: string, apiKey: string): string {
+  const key = apiKey.trim();
+  return key.length > 0 ? `${baseUrl}?key=${key}` : baseUrl;
+}
+
 /** Map instance handle returned by {@link initMap}. */
 export interface MapHandle {
   /** The underlying Leaflet map instance. */
@@ -77,10 +91,15 @@ export interface MapHandle {
    */
   clearTracks: () => void;
   /**
-   * Switch the active base tile layer.
+   * Switch the active base tile layer, preserving the current API key.
    * @param styleKey - A key from {@link TILE_LAYERS}.
    */
   setTileStyle: (styleKey: string) => void;
+  /**
+   * Update the CartoDB API key used for tile requests and reload the tile layer.
+   * @param apiKey - The new API key, or an empty string to remove it.
+   */
+  setApiKey: (apiKey: string) => void;
   /**
    * Fit the map viewport to the bounds of all currently rendered tracks.
    * No-op if no tracks have been added.
@@ -92,6 +111,10 @@ export interface MapHandle {
    * @param colour - A CSS hex colour string (e.g. `#1f77b4`).
    */
   setTrackColour: (name: string, colour: string) => void;
+  /**
+   * Return the current CartoDB API key (may be empty string).
+   */
+  getApiKey: () => string;
 }
 
 /**
@@ -109,8 +132,12 @@ export function initMap(containerId: string): MapHandle {
     zoom: DEFAULT_ZOOM,
   });
 
-  // Active tile layer reference — replaced when the user switches styles.
-  let currentTile: TileLayer = addTileLayer(map, DEFAULT_TILE_STYLE);
+  // Current API key — updated via setApiKey and used when switching tile styles.
+  let currentApiKey = "";
+
+  // Active tile layer reference — replaced when the user switches styles or API key.
+  let currentStyleKey = DEFAULT_TILE_STYLE;
+  let currentTile: TileLayer = addTileLayer(map, DEFAULT_TILE_STYLE, currentApiKey);
 
   // Track polylines keyed by track name for colour updates.
   const polylines = new Map<string, Polyline>();
@@ -145,7 +172,14 @@ export function initMap(containerId: string): MapHandle {
       const config = TILE_LAYERS[styleKey];
       if (!config) return;
       currentTile.remove();
-      currentTile = addTileLayer(map, styleKey);
+      currentStyleKey = styleKey;
+      currentTile = addTileLayer(map, styleKey, currentApiKey);
+    },
+
+    setApiKey(apiKey: string): void {
+      currentApiKey = apiKey;
+      currentTile.remove();
+      currentTile = addTileLayer(map, currentStyleKey, currentApiKey);
     },
 
     fitTracks(): void {
@@ -159,6 +193,10 @@ export function initMap(containerId: string): MapHandle {
         polyline.setStyle({ color: colour });
       }
     },
+
+    getApiKey(): string {
+      return currentApiKey;
+    },
   };
 }
 
@@ -167,11 +205,12 @@ export function initMap(containerId: string): MapHandle {
  *
  * @param map - The Leaflet map instance to add the layer to.
  * @param styleKey - A key from {@link TILE_LAYERS}.
+ * @param apiKey - The CartoDB API key to append to the tile URL, or `""`.
  * @returns The created `TileLayer`.
  */
-function addTileLayer(map: LeafletMap, styleKey: string): TileLayer {
+function addTileLayer(map: LeafletMap, styleKey: string, apiKey: string): TileLayer {
   const config = TILE_LAYERS[styleKey] ?? TILE_LAYERS[DEFAULT_TILE_STYLE];
-  return L.tileLayer(config.url, {
+  return L.tileLayer(buildTileUrl(config.url, apiKey), {
     attribution: config.attribution,
     maxZoom: MAX_ZOOM,
   }).addTo(map);
