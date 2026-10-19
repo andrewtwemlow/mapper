@@ -4,7 +4,6 @@
 ## New feature
 
 - Able to remove an uploaded file
-- ~~Need to pass in Carto API key~~ ✅ Done — API key input added to sidebar; see `.kiro/steering/carto-api.md`
 - support different map providers, create a steering doc for each tile API provider
   - MapBox
   - OpenStreetMaps
