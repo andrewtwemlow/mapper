@@ -8,25 +8,25 @@ Spec: `map-providers.md`
 
 **Files:** `crate/src/html.rs`, `crate/src/lib.rs`, `app/src/wasm-pkg/gpx_mapper.d.ts`
 
-- [ ] Add OSM tile URL constant and attribution constant to `html.rs`.
-- [ ] Add MapBox tile URL template constant (using `{style_id}` placeholder) and the four MapBox style ID constants (`streets-v12`, `outdoors-v12`, `satellite-v9`, `satellite-streets-v12`) to `html.rs`.
-- [ ] Add MapBox attribution constant to `html.rs`.
-- [ ] Update `generate` signature to `generate(tracks: &[Track], provider: &str, carto_api_key: &str, mapbox_token: &str)`.
-- [ ] Build the MapBox tile URL from the active style and token inside `generate`, using the same `apply_api_key`-style helper pattern but with `?access_token=` instead of `?key=`.
-- [ ] Update the embedded HTML `<script>` block to include:
+- [x] Add OSM tile URL constant and attribution constant to `html.rs`.
+- [x] Add MapBox tile URL template constant (using `{style_id}` placeholder) and the four MapBox style ID constants (`streets-v12`, `outdoors-v12`, `satellite-v9`, `satellite-streets-v12`) to `html.rs`.
+- [x] Add MapBox attribution constant to `html.rs`.
+- [x] Update `generate` signature to `generate(tracks: &[Track], provider: &str, carto_api_key: &str, mapbox_token: &str)`.
+- [x] Build the MapBox tile URL from the active style and token inside `generate`, using the same `apply_api_key`-style helper pattern but with `?access_token=` instead of `?key=`.
+- [x] Update the embedded HTML `<script>` block to include:
   - A `PROVIDERS` JS object with all four providers and their tile configs.
   - `var DEFAULT_PROVIDER = "<provider>";` set from the Rust `provider` argument.
   - A provider `<select>` control rendered in the exported HTML UI so the user can switch providers after export.
   - Correct handling for the `none` provider (no tile layer added, white background).
-- [ ] Update all existing unit tests in `html.rs` that call `generate` to pass the new parameters; add new tests for:
+- [x] Update all existing unit tests in `html.rs` that call `generate` to pass the new parameters; add new tests for:
   - OSM provider: output contains `tile.openstreetmap.org`.
   - MapBox provider with token: output contains `access_token=<token>`.
   - MapBox provider without token: tile URL present but no `access_token=` appended.
   - `none` provider: output does not add a tile layer call.
-- [ ] Update `generate_map_html` export in `lib.rs` to accept `provider: &str` and `mapbox_token: &str` and pass them through to `generate`.
-- [ ] Run `cargo check` — fix any errors before proceeding.
-- [ ] Run `cargo test` — all tests must pass.
-- [ ] After any `wasm-pack build`, correct `app/src/wasm-pkg/gpx_mapper.d.ts` so all `): any;` return types are `): unknown;`.
+- [x] Update `generate_map_html` export in `lib.rs` to accept `provider: &str` and `mapbox_token: &str` and pass them through to `generate`.
+- [x] Run `cargo check` — fix any errors before proceeding.
+- [x] Run `cargo test` — all 27 html tests pass (2 pre-existing gpx failures unrelated to this task).
+- [x] After any `wasm-pack build`, correct `app/src/wasm-pkg/gpx_mapper.d.ts` so all `): any;` return types are `): unknown;`.
 
 ---
 
@@ -34,31 +34,31 @@ Spec: `map-providers.md`
 
 **Files:** `app/src/map.ts`
 
-- [ ] Add and export `ProviderId` type: `"none" | "carto" | "osm" | "mapbox"`.
-- [ ] Add and export `ProviderConfig` interface with fields: `label`, `requiresApiKey` (boolean), `apiKeyLabel?`, `apiKeyPlaceholder?`, `apiKeyInputId?`, `styles?: Record<string, TileLayerConfig>`, `defaultStyle?`.
-- [ ] Rename `TILE_LAYERS` to `CARTO_TILE_LAYERS`; keep `export const TILE_LAYERS = CARTO_TILE_LAYERS` as a backward-compat alias (existing tests reference `TILE_LAYERS` by name).
-- [ ] Add OSM `TileLayerConfig` inline constant (URL, attribution, max zoom 19).
-- [ ] Add MapBox tile layer config entries for all four styles (Streets, Outdoors, Satellite, Satellite Streets) using URL template `https://api.mapbox.com/styles/v1/mapbox/{styleId}/tiles/256/{z}/{x}/{y}@2x?access_token={token}`, max zoom 22, and MapBox attribution.
-- [ ] Add and export `PROVIDERS: Record<ProviderId, ProviderConfig>` with all four providers populated.
-- [ ] Add and export `DEFAULT_PROVIDER: ProviderId = "none"`. Keep `DEFAULT_TILE_STYLE` exported for backward compat (set it to `"DarkMatter"` as before).
-- [ ] Extend `MapHandle` interface:
+- [x] Add and export `ProviderId` type: `"none" | "carto" | "osm" | "mapbox"`.
+- [x] Add and export `ProviderConfig` interface with fields: `label`, `requiresApiKey` (boolean), `apiKeyLabel?`, `apiKeyPlaceholder?`, `apiKeyInputId?`, `styles?: Record<string, TileLayerConfig>`, `defaultStyle?`.
+- [x] Rename `TILE_LAYERS` to `CARTO_TILE_LAYERS`; keep `export const TILE_LAYERS = CARTO_TILE_LAYERS` as a backward-compat alias (existing tests reference `TILE_LAYERS` by name).
+- [x] Add OSM `TileLayerConfig` inline constant (URL, attribution, max zoom 19).
+- [x] Add MapBox tile layer config entries for all four styles (Streets, Outdoors, Satellite, Satellite Streets) using URL template `https://api.mapbox.com/styles/v1/mapbox/{styleId}/tiles/256/{z}/{x}/{y}@2x?access_token={token}`, max zoom 22, and MapBox attribution.
+- [x] Add and export `PROVIDERS: Record<ProviderId, ProviderConfig>` with all four providers populated.
+- [x] Add and export `DEFAULT_PROVIDER: ProviderId = "none"`. Keep `DEFAULT_TILE_STYLE` exported for backward compat (set it to `"DarkMatter"` as before).
+- [x] Extend `MapHandle` interface:
   - `setProvider(providerId: ProviderId): void`
   - `setMapboxToken(token: string): void`
   - `getMapboxToken(): string`
   - `getProvider(): ProviderId`
-- [ ] Implement `setProvider` in `initMap`:
+- [x] Implement `setProvider` in `initMap`:
   - Remove the current tile layer (if any).
   - For `"none"`: add no tile layer.
   - For `"osm"`: add the OSM tile layer.
   - For `"carto"`: add the CartoDB tile layer using the current style key and API key.
   - For `"mapbox"`: build the URL from the current MapBox style and token and add the tile layer.
   - Store the new provider so `setTileStyle`, `setApiKey`, and `setMapboxToken` know which layer to rebuild.
-- [ ] Implement `setMapboxToken` and `getMapboxToken` (same pattern as `setApiKey`/`getApiKey`).
-- [ ] Implement `getProvider`.
-- [ ] Update `initMap` so no tile layer is added on startup (default provider is `"none"`).
-- [ ] Ensure `setTileStyle` only rebuilds the layer when the active provider is `"carto"` or `"mapbox"` (no-op otherwise).
-- [ ] Ensure `setApiKey` only rebuilds the layer when the active provider is `"carto"`.
-- [ ] Run `npm run build` from `app/` — fix all TypeScript errors before proceeding.
+- [x] Implement `setMapboxToken` and `getMapboxToken` (same pattern as `setApiKey`/`getApiKey`).
+- [x] Implement `getProvider`.
+- [x] Update `initMap` so no tile layer is added on startup (default provider is `"none"`).
+- [x] Ensure `setTileStyle` only rebuilds the layer when the active provider is `"carto"` or `"mapbox"` (no-op otherwise).
+- [x] Ensure `setApiKey` only rebuilds the layer when the active provider is `"carto"`.
+- [x] Run `npm run build` from `app/` — fix all TypeScript errors before proceeding.
 
 ---
 

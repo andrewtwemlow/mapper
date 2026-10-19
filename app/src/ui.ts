@@ -38,7 +38,7 @@ const DRAG_ACTIVE_CLASS = "drop-zone--active";
 const API_KEY_DEBOUNCE_MS = 600;
 
 /** All tracks parsed so far in the current session, in upload order. */
-let tracks: ParsedTrack[] = [];
+const tracks: ParsedTrack[] = [];
 
 /**
  * Initialise all UI components and wire them to the map.
@@ -416,7 +416,12 @@ function updateDownloads(mapHandle: MapHandle): void {
 
   try {
     const gpxContent = generateCombinedGpx(tracks);
-    const htmlContent = generateMapHtml(tracks, mapHandle.getApiKey());
+    const htmlContent = generateMapHtml(
+      tracks,
+      mapHandle.getProvider(),
+      mapHandle.getApiKey(),
+      mapHandle.getMapboxToken(),
+    );
 
     const gpxUrl = URL.createObjectURL(new Blob([gpxContent], { type: GPX_MIME_TYPE }));
     const htmlUrl = URL.createObjectURL(new Blob([htmlContent], { type: HTML_MIME_TYPE }));

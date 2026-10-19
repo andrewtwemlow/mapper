@@ -73,14 +73,21 @@ pub fn generate_combined_gpx(tracks_json: &str) -> Result<String, JsValue> {
 
 /// Generate a self-contained HTML map document from `tracks_json`.
 ///
-/// The output HTML references Leaflet.js and CartoDB tiles from CDN and embeds
-/// all track coordinate data as an inline JSON blob.
+/// The output HTML references Leaflet.js from CDN, embeds all track coordinate
+/// data as an inline JSON blob, and supports all four map providers (none,
+/// OpenStreetMap, CartoDB, MapBox) with a provider selector in the exported UI.
 ///
 /// `tracks_json` must be a JSON array of serialised [`Track`] objects.
 ///
-/// When `carto_api_key` is non-empty it is appended as a query parameter to
-/// every CartoDB tile URL in the exported document. Pass an empty string if no
-/// key is available.
+/// `provider` sets the default map provider when the exported file is opened.
+/// Accepted values: `"none"`, `"carto"`, `"osm"`, `"mapbox"`. Unrecognised
+/// values fall back to `"none"`.
+///
+/// When `carto_api_key` is non-empty it is appended as `?key=` to every CartoDB
+/// tile URL in the exported document. Pass an empty string if no key is available.
+///
+/// When `mapbox_token` is non-empty it is appended as `?access_token=` to every
+/// MapBox tile URL. Pass an empty string if no token is available.
 ///
 /// Returns the HTML document as a UTF-8 string.
 ///
@@ -89,8 +96,14 @@ pub fn generate_combined_gpx(tracks_json: &str) -> Result<String, JsValue> {
 /// Returns a [`JsValue`] error if `tracks_json` cannot be deserialised or the
 /// HTML cannot be generated.
 #[wasm_bindgen]
-pub fn generate_map_html(tracks_json: &str, carto_api_key: &str) -> Result<String, JsValue> {
+pub fn generate_map_html(
+    tracks_json: &str,
+    provider: &str,
+    carto_api_key: &str,
+    mapbox_token: &str,
+) -> Result<String, JsValue> {
     let tracks: Vec<Track> = serde_json::from_str(tracks_json)
         .map_err(|e| JsValue::from_str(&format!("invalid tracks JSON: {e}")))?;
-    html::generate(&tracks, carto_api_key).map_err(|e| JsValue::from_str(&e.to_string()))
+    html::generate(&tracks, provider, carto_api_key, mapbox_token)
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
