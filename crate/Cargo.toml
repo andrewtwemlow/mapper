@@ -21,7 +21,7 @@ thiserror = "2"
 quick-xml = { version = "0.37", features = ["serialize"] }
 
 # FIT file parsing
-fitparser = "0.6"
+fitparser = "0.11"
 
 # gzip decompression
 flate2 = "1"
