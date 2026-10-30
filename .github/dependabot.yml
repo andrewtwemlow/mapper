@@ -16,6 +16,10 @@ updates:
     directory: "/app/"
     schedule:
       interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/tests/unit"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "pre-commit"
     directory: "/"
     schedule:
