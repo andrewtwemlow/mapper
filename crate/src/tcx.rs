@@ -19,19 +19,19 @@ use crate::track::{Point, Track};
 const GZIP_MAGIC: [u8; 2] = [0x1f, 0x8b];
 
 /// XML element name for a TCX trackpoint.
-const ELEM_TRACKPOINT: &[u8] = b"Trackpoint";
+const ELEM_TRACKPOINT: &str = "Trackpoint";
 
 /// XML element name for a TCX position container.
-const ELEM_POSITION: &[u8] = b"Position";
+const ELEM_POSITION: &str = "Position";
 
 /// XML element name for latitude degrees inside a position.
-const ELEM_LATITUDE: &[u8] = b"LatitudeDegrees";
+const ELEM_LATITUDE: &str = "LatitudeDegrees";
 
 /// XML element name for longitude degrees inside a position.
-const ELEM_LONGITUDE: &[u8] = b"LongitudeDegrees";
+const ELEM_LONGITUDE: &str = "LongitudeDegrees";
 
 /// XML element name for altitude in metres.
-const ELEM_ALTITUDE: &[u8] = b"AltitudeMeters";
+const ELEM_ALTITUDE: &str = "AltitudeMeters";
 
 /// Parse raw TCX bytes (plain or gzip-compressed) into a [`Track`].
 ///
@@ -114,9 +114,8 @@ fn parse_trackpoints(bytes: &[u8]) -> Result<Vec<Point>, MapperError> {
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                // Bind the name to a local so the temporary lives for the whole arm.
-                let name_bytes = e.name();
-                let name = local_name(name_bytes.as_ref());
+                let name = e.name();
+                let name = local_name(name.as_ref());
                 match name {
                     n if n == ELEM_TRACKPOINT => {
                         in_trackpoint = true;
@@ -140,7 +139,7 @@ fn parse_trackpoints(bytes: &[u8]) -> Result<Vec<Point>, MapperError> {
                 }
             }
             Ok(Event::Text(ref e)) => {
-                if let Ok(text) = e.unescape() {
+                if let Ok(text) = quick_xml::escape::unescape(e.as_ref()) {
                     let trimmed = text.trim();
                     if reading_lat {
                         current_lat = trimmed.parse::<f64>().ok();
@@ -152,9 +151,8 @@ fn parse_trackpoints(bytes: &[u8]) -> Result<Vec<Point>, MapperError> {
                 }
             }
             Ok(Event::End(ref e)) => {
-                // Bind the name to a local so the temporary lives for the whole arm.
-                let name_bytes = e.name();
-                let name = local_name(name_bytes.as_ref());
+                let name = e.name();
+                let name = local_name(name.as_ref());
                 match name {
                     n if n == ELEM_TRACKPOINT => {
                         if let (Some(lat), Some(lon)) = (current_lat, current_lon) {
@@ -199,8 +197,10 @@ fn parse_trackpoints(bytes: &[u8]) -> Result<Vec<Point>, MapperError> {
 ///
 /// Given `{http://...}Trackpoint`, returns `Trackpoint`.
 /// Given `Trackpoint`, returns `Trackpoint` unchanged.
-fn local_name(name: &[u8]) -> &[u8] {
-    if let Some(pos) = name.iter().rposition(|&b| b == b'}') {
+fn local_name(name: &str) -> &str {
+    if let Some(pos) = name.rfind('}') {
+        &name[pos + 1..]
+    } else if let Some(pos) = name.rfind(':') {
         &name[pos + 1..]
     } else {
         name
