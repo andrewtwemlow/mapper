@@ -97,14 +97,13 @@ fn parse_trkpts(bytes: &[u8]) -> Result<Vec<Point>, MapperError> {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
-                // Bind the name to a local so the temporary lives for the whole arm.
-                let name_bytes = e.name();
-                let local_name = local_name(name_bytes.as_ref());
+            Ok(Event::Start(ref e)) => {
+                let name = e.name();
+                let local_name = local_name(name.as_ref());
 
-                if local_name == b"trkpt" {
-                    let lat = attr_f64(e, b"lat");
-                    let lon = attr_f64(e, b"lon");
+                if local_name == "trkpt" {
+                    let lat = attr_f64(e, "lat");
+                    let lon = attr_f64(e, "lon");
                     if let (Some(lat), Some(lon)) = (lat, lon) {
                         current_point = Some(Point {
                             lat,
@@ -112,28 +111,43 @@ fn parse_trkpts(bytes: &[u8]) -> Result<Vec<Point>, MapperError> {
                             ele: None,
                         });
                     }
-                } else if local_name == b"ele" {
+                } else if local_name == "ele" {
                     in_ele = true;
+                }
+            }
+            Ok(Event::Empty(ref e)) => {
+                let name = e.name();
+                let local_name = local_name(name.as_ref());
+
+                if local_name == "trkpt" {
+                    let lat = attr_f64(e, "lat");
+                    let lon = attr_f64(e, "lon");
+                    if let (Some(lat), Some(lon)) = (lat, lon) {
+                        points.push(Point {
+                            lat,
+                            lon,
+                            ele: None,
+                        });
+                    }
                 }
             }
             Ok(Event::Text(ref e)) => {
                 if in_ele {
                     if let Some(ref mut p) = current_point {
-                        if let Ok(text) = e.unescape() {
+                        if let Ok(text) = quick_xml::escape::unescape(e.as_ref()) {
                             p.ele = text.trim().parse::<f64>().ok();
                         }
                     }
                 }
             }
             Ok(Event::End(ref e)) => {
-                // Bind the name to a local so the temporary lives for the whole arm.
-                let name_bytes = e.name();
-                let local_name = local_name(name_bytes.as_ref());
-                if local_name == b"trkpt" {
+                let name = e.name();
+                let local_name = local_name(name.as_ref());
+                if local_name == "trkpt" {
                     if let Some(point) = current_point.take() {
                         points.push(point);
                     }
-                } else if local_name == b"ele" {
+                } else if local_name == "ele" {
                     in_ele = false;
                 }
             }
@@ -153,8 +167,10 @@ fn parse_trkpts(bytes: &[u8]) -> Result<Vec<Point>, MapperError> {
 ///
 /// Given `{http://www.topografix.com/GPX/1/1}trkpt`, returns `trkpt`.
 /// Given `trkpt`, returns `trkpt` unchanged.
-fn local_name(name: &[u8]) -> &[u8] {
-    if let Some(pos) = name.iter().rposition(|&b| b == b'}') {
+fn local_name(name: &str) -> &str {
+    if let Some(pos) = name.rfind('}') {
+        &name[pos + 1..]
+    } else if let Some(pos) = name.rfind(':') {
         &name[pos + 1..]
     } else {
         name
@@ -164,12 +180,12 @@ fn local_name(name: &[u8]) -> &[u8] {
 /// Read a named attribute from a quick-xml element and parse it as `f64`.
 ///
 /// Returns `None` if the attribute is absent or its value is not a valid float.
-fn attr_f64(e: &quick_xml::events::BytesStart<'_>, name: &[u8]) -> Option<f64> {
+fn attr_f64(e: &quick_xml::events::BytesStart<'_>, name: &str) -> Option<f64> {
     e.attributes()
         .filter_map(|a| a.ok())
         .find(|a| a.key.as_ref() == name)
         .and_then(|a| {
-            std::str::from_utf8(&a.value)
+            a.normalized_value(quick_xml::XmlVersion::Implicit1_0)
                 .ok()
                 .and_then(|s| s.parse::<f64>().ok())
         })
