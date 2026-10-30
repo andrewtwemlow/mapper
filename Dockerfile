@@ -34,7 +34,7 @@ RUN cd app && npm ci && npm run build
 
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
 # Serves the static build output with nginx.
-FROM nginx:1.27-alpine AS server
+FROM nginx:1.29-alpine AS server
 
 # Remove default nginx content
 RUN rm -rf /usr/share/nginx/html/*
