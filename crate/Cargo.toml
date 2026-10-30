@@ -18,7 +18,7 @@ web-sys = { version = "0.3", features = ["console"] }
 thiserror = "2"
 
 # GPX/XML parsing and writing
-quick-xml = { version = "0.37", features = ["serialize"] }
+quick-xml = { version = "0.42", features = ["serialize"] }
 
 # FIT file parsing
 fitparser = "0.6"
