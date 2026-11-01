@@ -5,7 +5,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { gpxFiles, fileStem } from "./test-data.js";
+import { gpxFiles, fileStem, kmlFiles } from "./test-data.js";
 
 /** GPX 1.1 namespace URI expected in the combined GPX output. */
 const GPX_NAMESPACE = "http://www.topografix.com/GPX/1/1";
@@ -175,5 +175,50 @@ test.describe("Downloads", () => {
     });
 
     await exportedPage.close();
+  });
+
+  test("KML upload: downloaded GPX contains trk with KML filename stem", async ({ page }) => {
+    const files = kmlFiles();
+    test.skip(files.length === 0, "No .kml files in test-data/");
+
+    const file = files[0];
+    const stem = fileStem(file);
+
+    await page.locator("#file-input").setInputFiles(file);
+    await expect(page.locator("#track-list li")).toHaveCount(1);
+
+    const gpxLink = page.locator("a.download-link[download='tracks.gpx']");
+    const href = await gpxLink.getAttribute("href");
+    expect(href).toBeTruthy();
+
+    const content = await page.evaluate(async (url: string) => {
+      const response = await fetch(url);
+      return response.text();
+    }, href!);
+
+    expect(content).toContain(`<name>${stem}</name>`);
+  });
+
+  test("KML upload: downloaded HTML contains track data from KML file", async ({ page }) => {
+    const files = kmlFiles();
+    test.skip(files.length === 0, "No .kml files in test-data/");
+
+    const file = files[0];
+    const stem = fileStem(file);
+
+    await page.locator("#file-input").setInputFiles(file);
+    await expect(page.locator("#track-list li")).toHaveCount(1);
+
+    const htmlLink = page.locator("a.download-link[download='map.html']");
+    const href = await htmlLink.getAttribute("href");
+    expect(href).toBeTruthy();
+
+    const content = await page.evaluate(async (url: string) => {
+      const response = await fetch(url);
+      return response.text();
+    }, href!);
+
+    expect(content).toContain("var TRACK_DATA =");
+    expect(content).toContain(stem);
   });
 });

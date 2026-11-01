@@ -13,6 +13,7 @@ import {
   parseGpx,
   parseFit,
   parseTcx,
+  parseKml,
   generateCombinedGpx,
   generateMapHtml,
   isSupportedFile,
@@ -151,17 +152,17 @@ export function renderAppShell(): void {
             class="drop-zone"
             role="button"
             tabindex="0"
-            aria-label="Upload GPX, FIT, or TCX files. Click or drag and drop."
+            aria-label="Upload GPX, FIT, TCX, or KML files. Click or drag and drop."
           >
             <p class="drop-zone__hint">
               Drop files here or <span class="drop-zone__link">click to browse</span>
             </p>
-            <p class="drop-zone__formats">GPX · FIT · FIT.GZ · TCX · TCX.GZ</p>
+            <p class="drop-zone__formats">GPX · FIT · FIT.GZ · TCX · TCX.GZ · KML · KML.GZ</p>
           </div>
           <input
             id="file-input"
             type="file"
-            accept=".gpx,.fit,.tcx,.gz"
+            accept=".gpx,.fit,.tcx,.gz,.kml"
             multiple
             aria-label="Select activity files"
             class="visually-hidden"
@@ -439,7 +440,7 @@ function processFiles(files: FileList, mapHandle: MapHandle): void {
   clearErrors();
   Array.from(files).forEach((file) => {
     if (!isSupportedFile(file.name)) {
-      showError(`"${file.name}" is not a supported file type (GPX, FIT, TCX).`);
+      showError(`"${file.name}" is not a supported file type (GPX, FIT, TCX, KML).`);
       return;
     }
     readFile(file)
@@ -499,6 +500,9 @@ function parseFile(bytes: Uint8Array, filename: string): ParsedTrack {
     case ".tcx":
     case ".tcx.gz":
       return parseTcx(bytes, filename);
+    case ".kml":
+    case ".kml.gz":
+      return parseKml(bytes, filename);
     default:
       throw new Error(`Unsupported file extension: ${filename}`);
   }

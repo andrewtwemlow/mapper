@@ -7,7 +7,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { gpxFiles, fitGzFiles, tcxGzFiles } from "./test-data.js";
+import { gpxFiles, fitGzFiles, tcxGzFiles, kmlFiles, kmlGzFiles } from "./test-data.js";
 
 test.describe("File Upload", () => {
   test.beforeEach(async ({ page }) => {
@@ -53,6 +53,28 @@ test.describe("File Upload", () => {
   test("upload a TCX.GZ file shows track on map", async ({ page }) => {
     const files = tcxGzFiles();
     test.skip(files.length === 0, "No .tcx.gz files in test-data/");
+
+    const fileInput = page.locator("#file-input");
+    await fileInput.setInputFiles(files[0]);
+
+    await expect(page.locator("#track-list li")).toHaveCount(1);
+    await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(1);
+  });
+
+  test("upload a KML file shows track on map", async ({ page }) => {
+    const files = kmlFiles();
+    test.skip(files.length === 0, "No .kml files in test-data/");
+
+    const fileInput = page.locator("#file-input");
+    await fileInput.setInputFiles(files[0]);
+
+    await expect(page.locator("#track-list li")).toHaveCount(1);
+    await expect(page.locator(".leaflet-overlay-pane path")).toHaveCount(1);
+  });
+
+  test("upload a KML.GZ file shows track on map", async ({ page }) => {
+    const files = kmlGzFiles();
+    test.skip(files.length === 0, "No .kml.gz files in test-data/");
 
     const fileInput = page.locator("#file-input");
     await fileInput.setInputFiles(files[0]);
