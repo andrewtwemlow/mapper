@@ -74,8 +74,9 @@ repos:
         name: eslint
         description: Lint TypeScript with ESLint
         language: system
-        entry: bash -c 'cd app && npx eslint --max-warnings=0 "$@"' --
+        entry: bash -c 'cd app && npx eslint --max-warnings=0 "${@#app/}"' --
         types_or: [ts, tsx]
+        files: ^app/src/
         pass_filenames: true
 
   # ── Prettier (TS, HTML, CSS, JSON, YAML, MD) ───────────────────────────────
@@ -85,6 +86,7 @@ repos:
         name: prettier
         description: Format code with Prettier
         language: system
-        entry: bash -c 'cd app && npx prettier --write "$@"' --
+        entry: bash -c 'cd app && npx prettier --write "${@#app/}"' --
         types_or: [ts, tsx, html, css, json, yaml, markdown]
+        files: ^app/
         pass_filenames: true

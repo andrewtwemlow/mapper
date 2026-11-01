@@ -26,8 +26,9 @@ All logic in the Rust crate must be tested at the unit level using `#[cfg(test)]
 - FIT parsing (`parse_fit`): plain `.fit`, gzipped `.fit.gz`, missing GPS fields, corrupt file.
 - TCX parsing (`parse_tcx`): plain `.tcx`, gzipped `.tcx.gz`, missing position elements, corrupt file.
 - Combined GPX generation (`generate_combined_gpx`): single track, multiple tracks, track naming from filename stem, valid GPX 1.1 namespace.
-- HTML map generation (`generate_map_html`): output contains Leaflet CDN script tag, output contains track data JSON blob, output contains all CartoDB tile URL variants.
+- HTML map generation (`generate_map_html`): output contains Leaflet CDN script tag, output contains track data JSON blob, output contains tile URL variants for all four providers (none, carto, osm, mapbox).
 - Coordinate validation: lat/lon at 0° (valid, not falsy), out-of-range values, null/missing values.
+- GPX parsing handles both element forms: self-closing `<trkpt .../>` (fires `Event::Empty`, no `Event::End`) and opening `<trkpt ...><ele>...</ele></trkpt>` (fires `Event::Start` + `Event::End`). Both must produce valid points.
 
 **Running:**
 
@@ -260,3 +261,26 @@ Before closing any implementation task that touches user-facing behaviour:
 3. If the test is missing or no longer accurate, update `tests/e2e/<scenario>.spec.ts` to match.
 
 This is enforced by the `PostTaskExec` Kiro hook.
+
+---
+
+## Zero Failing Tests Policy
+
+**No failing tests are acceptable.** A test failure is always either a bug in the code or a test that no longer reflects the intended behaviour. Neither is acceptable to leave unresolved.
+
+When a test fails:
+
+1. **Diagnose first** — read the test and the code it exercises before changing anything.
+2. **Fix the bug if the test is correct** — the test documents intended behaviour; the code must be fixed to match.
+3. **Update the test if the behaviour genuinely changed** — if a requirement changed and the test is now asserting the old behaviour, update the test to match the new requirement and document why in a comment.
+4. **Never skip or delete a failing test** to make CI green — that hides a real issue.
+5. **Never mark a task complete** while any test is failing, even tests unrelated to the current task.
+
+### Example: the `Event::Empty` GPX bug (fixed)
+
+The parser merged `Event::Start` and `Event::Empty` into a single match arm. Self-closing `<trkpt lat="..." lon="..."/>` fires only `Event::Empty` — no `Event::End` follows — so points were created but never pushed. Two tests failed:
+
+- `parse_valid_gpx_returns_two_points` — only 1 point returned instead of 2 (second trkpt was self-closing).
+- `parse_zero_coordinate_is_valid` — `NoTrackPoints` error because the single self-closing trkpt was never flushed.
+
+Fix: split the merged arm into separate `Event::Start` (hold for elevation) and `Event::Empty` (push immediately) arms.

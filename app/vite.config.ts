@@ -15,8 +15,9 @@ export default defineConfig({
     // Target latest stable Chrome and Firefox as per project requirements
     // (see .kiro/steering/project.md). Update these when major versions ship.
     target: ["chrome120", "firefox120"],
-    // Emit source maps for easier debugging of the Wasm integration.
-    sourcemap: true,
+    // Source maps are disabled for production builds — no error monitoring
+    // service is configured, so shipping maps publicly serves no purpose.
+    sourcemap: false,
   },
   server: {
     // Allow the Vite dev server to serve .wasm files with the correct MIME type.

@@ -29,7 +29,13 @@ COPY crate/ crate/
 RUN wasm-pack build crate/ --target web --out-dir ../app/src/wasm-pkg --release
 
 # ── Copy and build the frontend ───────────────────────────────────────────────
-COPY app/ app/
+# Copy only the source files needed to build — excludes dist/, node_modules/,
+# and src/wasm-pkg/ which are either generated in this stage or in the Rust
+# stage above.
+COPY app/package.json app/package-lock.json app/
+COPY app/index.html app/vite.config.ts app/tsconfig.json app/eslint.config.js app/.prettierrc.json app/
+COPY app/src/ app/src/
+COPY app/public/ app/public/
 RUN cd app && npm ci && npm run build
 
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────

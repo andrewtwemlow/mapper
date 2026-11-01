@@ -62,6 +62,10 @@ test.describe("CartoDB API Key", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.waitForSelector("#drop-zone");
+    // Default provider is "none" — switch to CartoDB so all tests run against
+    // the CartoDB provider as they did before multi-provider was introduced.
+    await page.locator("#provider-selector").selectOption("carto");
+    await page.locator("#carto-api-key-section").waitFor({ state: "visible" });
   });
 
   // ── Field presence ────────────────────────────────────────────────────────

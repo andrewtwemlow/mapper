@@ -24,13 +24,29 @@ test.describe("Map Rendering", () => {
     await expect(page.locator(".leaflet-container")).toBeVisible();
   });
 
+  test("on page load with default provider none, no tile images are present", async ({
+    page,
+  }) => {
+    // Default provider is "none" — Leaflet should add no tile layer at all
+    const tileImages = page.locator(".leaflet-tile-pane img");
+    await expect(tileImages).toHaveCount(0);
+  });
+
   test("default tile style is CartoDB DarkMatter", async ({ page }) => {
+    // Switch to CartoDB first (default provider is now "none")
+    await page.locator("#provider-selector").selectOption("carto");
+    await page.locator("#carto-api-key-section").waitFor({ state: "visible" });
+
     // The tile selector should default to the DarkMatter option
     const selector = page.locator("#tile-selector");
     await expect(selector).toHaveValue("DarkMatter");
   });
 
   test("tile style selector shows all four CartoDB options", async ({ page }) => {
+    // Switch to CartoDB to make the style section visible
+    await page.locator("#provider-selector").selectOption("carto");
+    await page.locator("#style-section").waitFor({ state: "visible" });
+
     const options = page.locator("#tile-selector option");
     await expect(options).toHaveCount(4);
 
@@ -44,6 +60,10 @@ test.describe("Map Rendering", () => {
   });
 
   test("switching tile style updates the map", async ({ page }) => {
+    // Switch to CartoDB to make the style section and tiles visible
+    await page.locator("#provider-selector").selectOption("carto");
+    await page.locator("#style-section").waitFor({ state: "visible" });
+
     const selector = page.locator("#tile-selector");
 
     // Switch to Positron

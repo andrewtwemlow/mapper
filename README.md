@@ -7,10 +7,28 @@ Upload GPX, FIT (.fit / .fit.gz), or TCX (.tcx / .tcx.gz) files. All processing 
 **Features:**
 
 - Drag-and-drop or click-to-upload multiple files
-- Interactive map with user-selectable CartoDB tile styles
+- Interactive map with four selectable tile providers (None, OpenStreetMap, CartoDB, MapBox)
 - Per-track colour picker (10-colour default palette)
 - Download a combined GPX file (one `<trk>` per uploaded file)
 - Download a shareable HTML map (self-contained data, CDN assets)
+
+---
+
+## Map Providers
+
+The map provider is selectable from the sidebar. The default is **None** — a plain white background that works entirely offline and requires no account or API key.
+
+| Provider | API key / token | Styles |
+|---|---|---|
+| **None** | Not required | — |
+| **OpenStreetMap** | Not required | Standard |
+| **CartoDB** | Optional (`?key=`) | Dark Matter, Dark Matter (No Labels), Positron, Voyager |
+| **MapBox** | Optional (`?access_token=`) | Streets, Outdoors, Satellite, Satellite Streets |
+
+CartoDB and MapBox work without a key, but the upstream tile service may rate-limit or reject keyless requests. Keys are entered in the sidebar, held in memory only, and embedded in exported HTML map files.
+
+- CartoDB keys: [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey)
+- MapBox tokens: [account.mapbox.com/access-tokens](https://account.mapbox.com/access-tokens/) — use a **public** token (`pk.eyJ1…`) only; never paste a secret token into the browser.
 
 ---
 

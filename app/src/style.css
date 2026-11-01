@@ -121,7 +121,9 @@ body {
   padding: var(--space-lg) var(--space-md);
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .drop-zone:hover,
@@ -199,6 +201,30 @@ body {
   white-space: nowrap;
 }
 
+.track-list__remove {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--border-radius);
+  background: none;
+  color: var(--colour-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.track-list__remove:hover,
+.track-list__remove:focus-visible {
+  color: var(--colour-error);
+  outline: none;
+}
+
 .track-list__colour-picker {
   width: 2rem;
   height: 1.5rem;
@@ -260,7 +286,9 @@ body {
   align-items: center;
   justify-content: center;
   line-height: 1;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .api-key-field__info-btn:hover,
