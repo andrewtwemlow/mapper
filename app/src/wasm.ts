@@ -9,6 +9,7 @@
 import init, {
   parse_gpx,
   parse_fit,
+  parse_kml,
   parse_tcx,
   generate_combined_gpx,
   generate_map_html,
@@ -101,6 +102,25 @@ export function parseTcx(bytes: Uint8Array, filename: string): ParsedTrack {
 }
 
 /**
+ * Parse a KML file (plain or gzip-compressed) from raw bytes.
+ *
+ * All `<LineString>` coordinate sequences in the file are combined into a
+ * single track. Both plain `.kml` and gzip-compressed `.kml.gz` bytes are
+ * accepted; decompression is handled inside the Wasm module.
+ *
+ * @param bytes - Raw file bytes as a `Uint8Array`.
+ * @param filename - Original filename, used to derive the track name.
+ * @returns The parsed track data.
+ * @throws If the bytes cannot be parsed as a valid KML file.
+ */
+export function parseKml(bytes: Uint8Array, filename: string): ParsedTrack {
+  // Safety: the Wasm function returns a value serialised from the Rust `Track`
+  // struct via serde-wasm-bindgen, so the shape is guaranteed by the type system.
+  const result: unknown = parse_kml(bytes, filename);
+  return result as ParsedTrack;
+}
+
+/**
  * Generate a combined GPX document from an array of parsed tracks.
  *
  * Each track becomes its own `<trk>` element in the output GPX 1.1 document.
@@ -141,7 +161,15 @@ export function generateMapHtml(
  *
  * Used by the UI to dispatch uploaded files to the correct parser.
  */
-export const SUPPORTED_EXTENSIONS = [".gpx", ".fit", ".fit.gz", ".tcx", ".tcx.gz"] as const;
+export const SUPPORTED_EXTENSIONS = [
+  ".gpx",
+  ".fit",
+  ".fit.gz",
+  ".tcx",
+  ".tcx.gz",
+  ".kml",
+  ".kml.gz",
+] as const;
 
 /** Union type of all supported file extension strings. */
 export type SupportedExtension = (typeof SUPPORTED_EXTENSIONS)[number];

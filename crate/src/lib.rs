@@ -1,7 +1,7 @@
 //! gpx-mapper — WebAssembly crate for parsing GPS activity files.
 //!
 //! Exposes functions to the JavaScript layer for:
-//! - Parsing GPX, FIT (.fit / .fit.gz), and TCX (.tcx / .tcx.gz) bytes into track data.
+//! - Parsing GPX, FIT (.fit / .fit.gz), TCX (.tcx / .tcx.gz), and KML (.kml / .kml.gz) bytes into track data.
 //! - Generating a combined GPX document from one or more parsed tracks.
 //! - Generating a self-contained HTML map document with embedded track data.
 //!
@@ -12,6 +12,7 @@ mod error;
 mod fit;
 mod gpx;
 mod html;
+mod kml;
 mod tcx;
 mod track;
 
@@ -50,6 +51,22 @@ pub fn parse_fit(bytes: &[u8], filename: &str) -> Result<JsValue, JsValue> {
 #[wasm_bindgen]
 pub fn parse_tcx(bytes: &[u8], filename: &str) -> Result<JsValue, JsValue> {
     let track = tcx::parse(bytes, filename).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    serde_wasm_bindgen::to_value(&track).map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Parse a KML file (plain or gzip-compressed) from raw bytes and return a serialised [`Track`] JSON string.
+///
+/// Accepts both plain `.kml` and gzip-compressed `.kml.gz` bytes. All
+/// `<LineString>` coordinate sequences in the file are combined into a
+/// single track. The track name is derived from the `filename` stem.
+///
+/// # Errors
+///
+/// Returns a [`JsValue`] error if gzip decompression fails, if the bytes are
+/// not valid KML XML, or if no valid GPS points are found.
+#[wasm_bindgen]
+pub fn parse_kml(bytes: &[u8], filename: &str) -> Result<JsValue, JsValue> {
+    let track = kml::parse(bytes, filename).map_err(|e| JsValue::from_str(&e.to_string()))?;
     serde_wasm_bindgen::to_value(&track).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 

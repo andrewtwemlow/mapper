@@ -21,6 +21,10 @@ pub enum MapperError {
     #[error("TCX parse error: {0}")]
     TcxParse(String),
 
+    /// The input bytes could not be parsed as KML XML.
+    #[error("KML parse error: {0}")]
+    KmlParse(String),
+
     /// The file contained no valid track points.
     #[error("no track points found in '{filename}'")]
     NoTrackPoints {

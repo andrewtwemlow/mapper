@@ -2,7 +2,7 @@
 
 A purely client-side WebAssembly application for uploading, visualising, and exporting GPS activity files.
 
-Upload GPX, FIT (.fit / .fit.gz), or TCX (.tcx / .tcx.gz) files. All processing happens in the browser — no data is sent to a server.
+Upload GPX, FIT (.fit / .fit.gz), TCX (.tcx / .tcx.gz), or KML (.kml / .kml.gz) files. All processing happens in the browser — no data is sent to a server.
 
 **Features:**
 
@@ -19,7 +19,7 @@ Upload GPX, FIT (.fit / .fit.gz), or TCX (.tcx / .tcx.gz) files. All processing 
 The map provider is selectable from the sidebar. The default is **None** — a plain white background that works entirely offline and requires no account or API key.
 
 | Provider | API key / token | Styles |
-|---|---|---|
+| --- | --- | --- |
 | **None** | Not required | — |
 | **OpenStreetMap** | Not required | Standard |
 | **CartoDB** | Optional (`?key=`) | Dark Matter, Dark Matter (No Labels), Positron, Voyager |
@@ -163,7 +163,7 @@ app/            TypeScript + Vite frontend
 tests/
   unit/         Vitest unit tests
   e2e/          Playwright end-to-end tests
-test-data/      Sample GPX, FIT, and TCX files used by tests
+test-data/      Sample GPX, FIT, TCX, and KML files used by tests
 .kiro/
   steering/     Project requirements and coding standards
   hooks/        Kiro automation hooks
@@ -173,6 +173,6 @@ test-data/      Sample GPX, FIT, and TCX files used by tests
 
 ## Architecture
 
-All file parsing (GPX, FIT, TCX) and output generation (combined GPX, HTML map) is implemented in Rust and compiled to WebAssembly via wasm-pack. The TypeScript frontend loads the Wasm module, passes raw file bytes to it, and handles map rendering via Leaflet.js.
+All file parsing (GPX, FIT, TCX, KML) and output generation (combined GPX, HTML map) is implemented in Rust and compiled to WebAssembly via wasm-pack. The TypeScript frontend loads the Wasm module, passes raw file bytes to it, and handles map rendering via Leaflet.js.
 
 See `.kiro/steering/project.md` for full requirements and design decisions.
