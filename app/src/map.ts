@@ -309,6 +309,12 @@ export interface MapHandle {
    * @param colour - A CSS hex colour string (e.g. `#1f77b4`).
    */
   setTrackColour: (name: string, colour: string) => void;
+
+  /**
+   * Remove a single track polyline from the map by track name.
+   * @param name - The track name as returned by the parser.
+   */
+  removeTrack: (name: string) => void;
 }
 
 // ── initMap ───────────────────────────────────────────────────────────────────
@@ -485,6 +491,14 @@ export function initMap(containerId: string): MapHandle {
       const polyline = polylines.get(name);
       if (polyline) {
         polyline.setStyle({ color: colour });
+      }
+    },
+
+    removeTrack(name: string): void {
+      const polyline = polylines.get(name);
+      if (polyline) {
+        polyline.remove();
+        polylines.delete(name);
       }
     },
   };

@@ -507,10 +507,11 @@ function parseFile(bytes: Uint8Array, filename: string): ParsedTrack {
 /**
  * Add a track entry to the sidebar track list.
  *
- * Each entry shows the track name and a colour picker input.
+ * Each entry shows a remove button, the track name, and a colour picker input.
  *
  * @param track - The track to display.
- * @param mapHandle - Used to update the polyline colour on picker change.
+ * @param mapHandle - Used to update the polyline colour on picker change and
+ *   to remove the polyline when the track is deleted.
  */
 function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
   const list = document.getElementById("track-list");
@@ -523,6 +524,11 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
   const colourId = `colour-${CSS.escape(track.name)}`;
 
   item.innerHTML = `
+    <button
+      type="button"
+      class="track-list__remove"
+      aria-label="Remove track ${escapeHtml(track.name)}"
+    >&#x2715;</button>
     <span class="track-list__name" title="${escapeHtml(track.name)}">${escapeHtml(track.name)}</span>
     <label for="${colourId}" class="visually-hidden">Track colour for ${escapeHtml(track.name)}</label>
     <input
@@ -541,6 +547,17 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
       tracks[idx] = { ...tracks[idx], colour: picker.value } as ParsedTrack;
     }
     mapHandle.setTrackColour(track.name, picker.value);
+    updateDownloads(mapHandle);
+  });
+
+  const removeBtn = item.querySelector(".track-list__remove") as HTMLButtonElement | null;
+  removeBtn?.addEventListener("click", () => {
+    const idx = tracks.findIndex((t) => t.name === track.name);
+    if (idx !== -1) {
+      tracks.splice(idx, 1);
+    }
+    mapHandle.removeTrack(track.name);
+    item.remove();
     updateDownloads(mapHandle);
   });
 
