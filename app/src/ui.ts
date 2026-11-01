@@ -82,11 +82,11 @@ export function renderAppShell(): void {
           <label for="provider-selector" class="visually-hidden">Map provider</label>
           <select id="provider-selector" class="tile-selector" aria-label="Map provider">
             ${Object.entries(PROVIDERS)
-      .map(
-        ([key, cfg]) =>
-          `<option value="${key}"${key === DEFAULT_PROVIDER ? " selected" : ""}>${cfg.label}</option>`,
-      )
-      .join("\n            ")}
+              .map(
+                ([key, cfg]) =>
+                  `<option value="${key}"${key === DEFAULT_PROVIDER ? " selected" : ""}>${cfg.label}</option>`,
+              )
+              .join("\n            ")}
           </select>
         </section>
 

@@ -30,8 +30,7 @@ const TILE_CARTO_DARK_MATTER_NO_LABELS: &str =
     "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png";
 
 /// CartoDB Positron tile URL template.
-const TILE_CARTO_POSITRON: &str =
-    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+const TILE_CARTO_POSITRON: &str = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
 /// CartoDB Voyager tile URL template.
 const TILE_CARTO_VOYAGER: &str =
@@ -90,8 +89,7 @@ const MAX_ZOOM_CARTO: u8 = 19;
 ///
 /// Pre-serialised as a JSON array for embedding in HTML output.
 /// Uses `r##` delimiters because the string body contains `#` characters.
-const DEFAULT_COLOURS_JSON: &str =
-    r##"["#1f77b4","#ff7f0e","#2ca02c","#d62728","#6d20b6","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"]"##;
+const DEFAULT_COLOURS_JSON: &str = r##"["#1f77b4","#ff7f0e","#2ca02c","#d62728","#6d20b6","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"]"##;
 
 // ── URL helpers ───────────────────────────────────────────────────────────────
 
@@ -177,8 +175,7 @@ pub fn generate(
     let mapbox_streets = build_mapbox_url(MAPBOX_STYLE_STREETS, mapbox_token);
     let mapbox_outdoors = build_mapbox_url(MAPBOX_STYLE_OUTDOORS, mapbox_token);
     let mapbox_satellite = build_mapbox_url(MAPBOX_STYLE_SATELLITE, mapbox_token);
-    let mapbox_satellite_streets =
-        build_mapbox_url(MAPBOX_STYLE_SATELLITE_STREETS, mapbox_token);
+    let mapbox_satellite_streets = build_mapbox_url(MAPBOX_STYLE_SATELLITE_STREETS, mapbox_token);
 
     Ok(format!(
         r#"<!DOCTYPE html>
@@ -431,13 +428,25 @@ mod tests {
             Track::new(
                 "run_a",
                 vec![
-                    Point { lat: 51.5, lon: -0.1, ele: Some(10.0) },
-                    Point { lat: 51.6, lon: -0.2, ele: None },
+                    Point {
+                        lat: 51.5,
+                        lon: -0.1,
+                        ele: Some(10.0),
+                    },
+                    Point {
+                        lat: 51.6,
+                        lon: -0.2,
+                        ele: None,
+                    },
                 ],
             ),
             Track::new(
                 "run_b",
-                vec![Point { lat: 52.0, lon: -1.0, ele: None }],
+                vec![Point {
+                    lat: 52.0,
+                    lon: -1.0,
+                    ele: None,
+                }],
             ),
         ]
     }

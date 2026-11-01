@@ -121,7 +121,9 @@ body {
   padding: var(--space-lg) var(--space-md);
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .drop-zone:hover,
@@ -284,7 +286,9 @@ body {
   align-items: center;
   justify-content: center;
   line-height: 1;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .api-key-field__info-btn:hover,
