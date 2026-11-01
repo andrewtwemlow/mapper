@@ -36,6 +36,13 @@
   /* Layout */
   --sidebar-width: 20rem;
   --border-radius: 0.375rem;
+
+  /* Elevation panel */
+  --elevation-panel-default-height: 200px;
+  --elevation-resize-handle-height: 6px;
+  --elevation-resize-bar-height: 2px;
+  --elevation-resize-bar-offset: 2px;
+  --elevation-resize-bar-radius: 1px;
 }
 
 /* ── Reset ───────────────────────────────────────────────────────────────────── */
@@ -81,6 +88,7 @@ body {
 .map-area {
   flex: 1;
   position: relative;
+  min-width: 0;
 }
 
 .map-container {
@@ -359,6 +367,86 @@ body {
 .download-link:focus-visible {
   background-color: var(--colour-accent-hover);
   outline: none;
+}
+
+/* ── Elevation profile panel ─────────────────────────────────────────────────── */
+
+/**
+ * Wraps the map container and the elevation panel so they share the full
+ * height of .map-area as a flex column. The map grows to fill remaining
+ * space; the panel has a fixed height set via its inline style (JS-driven).
+ */
+.map-and-elevation {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/**
+ * The map fills all remaining height above the elevation panel.
+ */
+.map-and-elevation .map-container {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/**
+ * Elevation panel sits below the map at full .map-area width.
+ * Default height is set in JS when the panel is shown (200 px).
+ * Hidden variant removes it from layout entirely.
+ */
+.elevation-panel {
+  flex-shrink: 0;
+  height: var(--elevation-panel-default-height);
+  position: relative;
+  background-color: var(--colour-surface);
+  border-top: 1px solid var(--colour-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.elevation-panel--hidden {
+  display: none;
+}
+
+/**
+ * Drag handle along the top edge of the panel. The grab cursor signals
+ * resizability; a thin highlight bar appears on hover.
+ */
+.elevation-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--elevation-resize-handle-height);
+  cursor: ns-resize;
+  z-index: 10;
+}
+
+.elevation-resize-handle::after {
+  content: "";
+  display: block;
+  height: var(--elevation-resize-bar-height);
+  margin: var(--elevation-resize-bar-offset) var(--space-xl);
+  border-radius: var(--elevation-resize-bar-radius);
+  background-color: var(--colour-border);
+  transition: background-color 0.15s ease;
+}
+
+.elevation-resize-handle:hover::after {
+  background-color: var(--colour-accent);
+}
+
+/**
+ * Canvas fills the panel below the resize handle.
+ */
+.elevation-canvas {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  padding-top: var(--elevation-resize-handle-height);
+  /* clear the resize handle */
 }
 
 /* ── Utility ─────────────────────────────────────────────────────────────────── */

@@ -21,6 +21,7 @@ import {
   type ParsedTrack,
 } from "./wasm.js";
 import { assignTrackColour, DEFAULT_COLOURS } from "./colours.js";
+import { showElevationProfile, hideElevationProfile, updateElevationColour } from "./elevation.js";
 
 /** MIME type for GPX download links. */
 const GPX_MIME_TYPE = "application/gpx+xml";
@@ -40,6 +41,33 @@ const API_KEY_DEBOUNCE_MS = 600;
 
 /** All tracks parsed so far in the current session, in upload order. */
 const tracks: ParsedTrack[] = [];
+
+/**
+ * Check whether a track has any points with elevation data.
+ *
+ * @param track - The track to check.
+ * @returns `true` if at least one point has a numeric `ele` value.
+ */
+function hasElevation(track: ParsedTrack): boolean {
+  return track.points.some((p) => typeof p.ele === "number");
+}
+
+/**
+ * Show or hide the elevation profile based on the current track count.
+ *
+ * The profile is shown only when exactly one track is loaded and that track
+ * has at least one point with elevation data. In all other cases the panel
+ * is hidden and the map reclaims the full height.
+ *
+ * @param mapHandle - Used to access the Leaflet map instance.
+ */
+function updateElevationView(mapHandle: MapHandle): void {
+  if (tracks.length === 1 && hasElevation(tracks[0])) {
+    showElevationProfile(tracks[0], tracks[0].colour ?? DEFAULT_COLOURS[0], mapHandle.leafletMap);
+  } else {
+    hideElevationProfile();
+  }
+}
 
 /**
  * Initialise all UI components and wire them to the map.
@@ -184,7 +212,22 @@ export function renderAppShell(): void {
       </aside>
 
       <main class="map-area" aria-label="Map">
-        <div id="map-container" class="map-container"></div>
+        <div class="map-and-elevation">
+          <div id="map-container" class="map-container"></div>
+          <section
+            id="elevation-panel"
+            class="elevation-panel elevation-panel--hidden"
+            role="region"
+            aria-label="Elevation profile"
+          >
+            <div class="elevation-resize-handle" aria-hidden="true"></div>
+            <canvas
+              id="elevation-canvas"
+              class="elevation-canvas"
+              aria-label="Elevation profile"
+            ></canvas>
+          </section>
+        </div>
       </main>
     </div>
   `;
@@ -453,6 +496,7 @@ function processFiles(files: FileList, mapHandle: MapHandle): void {
         mapHandle.fitTracks();
         addTrackToList(trackWithColour, mapHandle);
         updateDownloads(mapHandle);
+        updateElevationView(mapHandle);
       })
       .catch((err: unknown) => {
         showError(`Failed to parse "${file.name}": ${String(err)}`);
@@ -552,6 +596,9 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
     }
     mapHandle.setTrackColour(track.name, picker.value);
     updateDownloads(mapHandle);
+    if (tracks.length === 1) {
+      updateElevationColour(picker.value);
+    }
   });
 
   const removeBtn = item.querySelector(".track-list__remove") as HTMLButtonElement | null;
@@ -563,6 +610,7 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
     mapHandle.removeTrack(track.name);
     item.remove();
     updateDownloads(mapHandle);
+    updateElevationView(mapHandle);
   });
 
   list.appendChild(item);
