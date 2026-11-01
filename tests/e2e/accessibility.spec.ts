@@ -31,6 +31,10 @@ test.describe("Accessibility", () => {
   });
 
   test("tile style selector has an accessible label", async ({ page }) => {
+    // Switch to CartoDB to make the style section visible
+    await page.locator("#provider-selector").selectOption("carto");
+    await page.locator("#style-section").waitFor({ state: "visible" });
+
     const selector = page.locator("#tile-selector");
     await expect(selector).toHaveAttribute("aria-label");
     const label = await selector.getAttribute("aria-label");
@@ -98,6 +102,10 @@ test.describe("Accessibility", () => {
   });
 
   test("CartoDB API key input has an accessible label", async ({ page }) => {
+    // Switch to CartoDB to make the section visible
+    await page.locator("#provider-selector").selectOption("carto");
+    await page.locator("#carto-api-key-section").waitFor({ state: "visible" });
+
     const input = page.locator("#carto-api-key");
     await expect(input).toHaveAttribute("aria-label");
     const label = await input.getAttribute("aria-label");
@@ -105,6 +113,10 @@ test.describe("Accessibility", () => {
   });
 
   test("API key info button has an accessible label", async ({ page }) => {
+    // Switch to CartoDB to make the section visible
+    await page.locator("#provider-selector").selectOption("carto");
+    await page.locator("#carto-api-key-section").waitFor({ state: "visible" });
+
     const btn = page.locator(".api-key-field__info-btn");
     await expect(btn).toHaveAttribute("aria-label");
     const label = await btn.getAttribute("aria-label");
@@ -112,7 +124,42 @@ test.describe("Accessibility", () => {
   });
 
   test("API key tooltip has role=tooltip", async ({ page }) => {
+    // Switch to CartoDB to make the section visible
+    await page.locator("#provider-selector").selectOption("carto");
+    await page.locator("#carto-api-key-section").waitFor({ state: "visible" });
+
     const tooltip = page.locator("#api-key-tooltip");
     await expect(tooltip).toHaveAttribute("role", "tooltip");
+  });
+
+  test("provider selector has an accessible label", async ({ page }) => {
+    const selector = page.locator("#provider-selector");
+    await expect(selector).toHaveAttribute("aria-label");
+    const label = await selector.getAttribute("aria-label");
+    expect(label?.length).toBeGreaterThan(0);
+  });
+
+  test("MapBox token input has an accessible label", async ({ page }) => {
+    // Switch to MapBox to make the section visible
+    await page.locator("#provider-selector").selectOption("mapbox");
+    await page.locator("#mapbox-token-section").waitFor({ state: "visible" });
+
+    const input = page.locator("#mapbox-api-key");
+    await expect(input).toHaveAttribute("aria-label");
+    const label = await input.getAttribute("aria-label");
+    expect(label?.length).toBeGreaterThan(0);
+  });
+
+  test("conditional sections that are hidden carry aria-hidden=true", async ({
+    page,
+  }) => {
+    // On load with "none" provider all three conditional sections are hidden
+    const cartoSection = page.locator("#carto-api-key-section");
+    const mapboxSection = page.locator("#mapbox-token-section");
+    const styleSection = page.locator("#style-section");
+
+    await expect(cartoSection).toHaveAttribute("aria-hidden", "true");
+    await expect(mapboxSection).toHaveAttribute("aria-hidden", "true");
+    await expect(styleSection).toHaveAttribute("aria-hidden", "true");
   });
 });

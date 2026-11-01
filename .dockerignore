@@ -1,0 +1,28 @@
+# Build artifacts — regenerated inside the container
+app/dist/
+app/src/wasm-pkg/
+
+# Dependencies — reinstalled inside the container via npm ci
+app/node_modules/
+tests/e2e/node_modules/
+tests/unit/node_modules/
+
+# Rust build cache — the container builds from source
+crate/target/
+
+# Test files — not needed in the production image
+tests/
+test-data/
+
+# Local tooling and environment
+.env
+.env.*
+mise.toml
+.pre-commit-config.yaml
+
+# Version control
+.git/
+.github/
+
+# Editor / IDE
+.kiro/

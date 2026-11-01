@@ -7,8 +7,8 @@
  * exclusively through `./wasm.ts`.
  */
 
-import type { MapHandle } from "./map.js";
-import { TILE_LAYERS, DEFAULT_TILE_STYLE } from "./map.js";
+import type { MapHandle, ProviderId } from "./map.js";
+import { PROVIDERS, DEFAULT_PROVIDER } from "./map.js";
 import {
   parseGpx,
   parseFit,
@@ -48,7 +48,9 @@ const tracks: ParsedTrack[] = [];
  * @param mapHandle - The map handle returned by `initMap`.
  */
 export function initUI(mapHandle: MapHandle): void {
+  setupProviderSelector(mapHandle);
   setupApiKeyInput(mapHandle);
+  setupMapboxTokenInput(mapHandle);
   setupDropZone(mapHandle);
   setupTileSelector(mapHandle);
 }
@@ -75,7 +77,20 @@ export function renderAppShell(): void {
           <h1 class="sidebar__title">GPX Mapper</h1>
         </header>
 
-        <section class="sidebar__section" aria-labelledby="apikey-heading">
+        <section class="sidebar__section" aria-labelledby="provider-heading">
+          <h2 id="provider-heading" class="sidebar__section-title">Map Provider</h2>
+          <label for="provider-selector" class="visually-hidden">Map provider</label>
+          <select id="provider-selector" class="tile-selector" aria-label="Map provider">
+            ${Object.entries(PROVIDERS)
+      .map(
+        ([key, cfg]) =>
+          `<option value="${key}"${key === DEFAULT_PROVIDER ? " selected" : ""}>${cfg.label}</option>`,
+      )
+      .join("\n            ")}
+          </select>
+        </section>
+
+        <section id="carto-api-key-section" class="sidebar__section" aria-labelledby="apikey-heading" hidden aria-hidden="true">
           <h2 id="apikey-heading" class="sidebar__section-title">CartoDB API Key</h2>
           <div class="api-key-field">
             <div class="api-key-field__input-row">
@@ -108,6 +123,27 @@ export function renderAppShell(): void {
           </div>
         </section>
 
+        <section id="mapbox-token-section" class="sidebar__section" aria-labelledby="mapbox-heading" hidden aria-hidden="true">
+          <h2 id="mapbox-heading" class="sidebar__section-title">MapBox Access Token</h2>
+          <label for="mapbox-api-key" class="visually-hidden">MapBox access token</label>
+          <input
+            id="mapbox-api-key"
+            type="text"
+            class="api-key-field__input"
+            placeholder="pk.eyJ1…"
+            aria-label="MapBox access token"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </section>
+
+        <section id="style-section" class="sidebar__section" aria-labelledby="style-heading" hidden aria-hidden="true">
+          <h2 id="style-heading" class="sidebar__section-title">Map Style</h2>
+          <label for="tile-selector" class="visually-hidden">Map tile style</label>
+          <select id="tile-selector" class="tile-selector" aria-label="Map tile style">
+          </select>
+        </section>
+
         <section class="sidebar__section" aria-labelledby="upload-heading">
           <h2 id="upload-heading" class="sidebar__section-title">Upload Files</h2>
           <div
@@ -136,19 +172,6 @@ export function renderAppShell(): void {
         <section class="sidebar__section" aria-labelledby="tracks-heading">
           <h2 id="tracks-heading" class="sidebar__section-title">Tracks</h2>
           <ul id="track-list" class="track-list" aria-label="Uploaded tracks"></ul>
-        </section>
-
-        <section class="sidebar__section" aria-labelledby="style-heading">
-          <h2 id="style-heading" class="sidebar__section-title">Map Style</h2>
-          <label for="tile-selector" class="visually-hidden">Map tile style</label>
-          <select id="tile-selector" class="tile-selector" aria-label="Map tile style">
-            ${Object.entries(TILE_LAYERS)
-      .map(
-        ([key, cfg]) =>
-          `<option value="${key}"${key === DEFAULT_TILE_STYLE ? " selected" : ""}>${cfg.label}</option>`,
-      )
-      .join("\n            ")}
-          </select>
         </section>
 
         <section class="sidebar__section" aria-labelledby="downloads-heading">
@@ -209,6 +232,139 @@ function setupApiKeyInput(mapHandle: MapHandle): void {
         infoBtn.setAttribute("aria-expanded", "false");
       }
     }, 150);
+  });
+}
+
+/**
+ * Repopulate the `#tile-selector` options with the styles for the given provider.
+ *
+ * Called whenever the active provider changes so the selector always shows the
+ * correct labels and values (CartoDB styles for `"carto"`, MapBox styles for
+ * `"mapbox"`). For providers without styles (`"none"`, `"osm"`) the selector
+ * is hidden and its options are cleared.
+ *
+ * The `activeStyleKey` is pre-selected when it exists in the new provider's
+ * style list (e.g. switching away from carto and back again keeps the user's
+ * chosen style). Otherwise falls back to the provider's `defaultStyle`.
+ *
+ * @param providerId - The newly selected provider.
+ * @param activeStyleKey - The style key currently active in the map for this provider.
+ */
+function populateStyleSelector(providerId: ProviderId, activeStyleKey?: string): void {
+  const selector = document.getElementById("tile-selector") as HTMLSelectElement | null;
+  if (!selector) return;
+
+  const provider = PROVIDERS[providerId];
+  const styles = provider.styles;
+
+  if (!styles) {
+    selector.innerHTML = "";
+    return;
+  }
+
+  // Preserve the active style if it exists in this provider's list,
+  // otherwise fall back to the provider's declared default.
+  const selectedKey =
+    activeStyleKey && styles[activeStyleKey] ? activeStyleKey : provider.defaultStyle;
+
+  selector.innerHTML = Object.entries(styles)
+    .map(
+      ([key, cfg]) =>
+        `<option value="${key}"${key === selectedKey ? " selected" : ""}>${cfg.label}</option>`,
+    )
+    .join("");
+}
+
+/**
+ * Show or hide the conditional sidebar sections based on the active provider,
+ * and repopulate the style selector with the provider's available styles.
+ *
+ * - `none` / `osm`: all three conditional sections hidden.
+ * - `carto`: CartoDB API key section and style section visible; MapBox token hidden.
+ * - `mapbox`: MapBox token section and style section visible; CartoDB API key hidden.
+ *
+ * @param providerId - The newly selected provider.
+ * @param activeStyleKey - The style key currently active in the map for this provider.
+ */
+function updateConditionalSections(providerId: ProviderId, activeStyleKey?: string): void {
+  const cartoSection = document.getElementById("carto-api-key-section");
+  const mapboxSection = document.getElementById("mapbox-token-section");
+  const styleSection = document.getElementById("style-section");
+
+  if (!cartoSection || !mapboxSection || !styleSection) return;
+
+  const showCarto = providerId === "carto";
+  const showMapbox = providerId === "mapbox";
+  const showStyle = showCarto || showMapbox;
+
+  cartoSection.hidden = !showCarto;
+  cartoSection.setAttribute("aria-hidden", String(!showCarto));
+
+  mapboxSection.hidden = !showMapbox;
+  mapboxSection.setAttribute("aria-hidden", String(!showMapbox));
+
+  styleSection.hidden = !showStyle;
+  styleSection.setAttribute("aria-hidden", String(!showStyle));
+
+  if (showStyle) {
+    populateStyleSelector(providerId, activeStyleKey);
+  }
+}
+
+/**
+ * Set up the provider `<select>` element to switch map tile providers and
+ * show/hide the corresponding conditional sections.
+ *
+ * Tracks the last active style per provider so the selector is repopulated
+ * with the correct style when the user switches back to a previously-used
+ * provider.
+ *
+ * @param mapHandle - Used to call `setProvider` on selection change.
+ */
+function setupProviderSelector(mapHandle: MapHandle): void {
+  const selector = document.getElementById("provider-selector") as HTMLSelectElement | null;
+  if (!selector) return;
+
+  // Remembers the last active style key for each provider across switches.
+  const savedStyles: Partial<Record<ProviderId, string>> = {};
+
+  selector.addEventListener("change", () => {
+    const providerId = selector.value as ProviderId;
+
+    // Save the current style selection for the outgoing provider before switching.
+    const tileSelector = document.getElementById("tile-selector") as HTMLSelectElement | null;
+    const outgoing = mapHandle.getProvider();
+    if (tileSelector && tileSelector.value) {
+      savedStyles[outgoing] = tileSelector.value;
+    }
+
+    mapHandle.setProvider(providerId);
+    updateConditionalSections(providerId, savedStyles[providerId]);
+  });
+}
+
+/**
+ * Set up the MapBox access token input with debounced application to the map.
+ *
+ * The token is applied to the map tile layer after the user stops typing for
+ * {@link API_KEY_DEBOUNCE_MS} ms to avoid repeated tile requests mid-entry.
+ * Download links are regenerated whenever the token changes so the exported
+ * HTML always embeds the current token.
+ *
+ * @param mapHandle - Used to call `setMapboxToken` once the debounce settles.
+ */
+function setupMapboxTokenInput(mapHandle: MapHandle): void {
+  const input = document.getElementById("mapbox-api-key") as HTMLInputElement | null;
+  if (!input) return;
+
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+  input.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      mapHandle.setMapboxToken(input.value);
+      updateDownloads(mapHandle);
+    }, API_KEY_DEBOUNCE_MS);
   });
 }
 
@@ -396,9 +552,10 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
  *
  * Revokes any previously created object URLs to avoid memory leaks, then
  * generates fresh Blob URLs for the combined GPX and HTML map downloads.
- * The current CartoDB API key from the map handle is embedded in the HTML export.
+ * The active provider, CartoDB API key, and MapBox token are all embedded
+ * in the HTML export so the downloaded map uses the same tile configuration.
  *
- * @param mapHandle - Used to read the current API key for the HTML export.
+ * @param mapHandle - Used to read the current provider, API key, and MapBox token.
  */
 function updateDownloads(mapHandle: MapHandle): void {
   const section = document.getElementById("download-section");
