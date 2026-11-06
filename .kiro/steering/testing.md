@@ -6,6 +6,22 @@ description: Test strategy, Playwright setup, Vitest configuration, and requirem
 
 # Testing Strategy
 
+## Running Tests — Always Use mise Tasks
+
+**Always use `mise run <task>` to run tests.** Never derive or construct raw commands (`cargo test`, `npx vitest run`, `npx playwright test`, etc.) when a mise task exists. This ensures consistent working directories, environment variables, and flags.
+
+| Task | What it runs |
+| --- | --- |
+| `mise run test-rust` | Rust unit tests (`cargo test` in `crate/`) |
+| `mise run test-unit` | JS/TS unit tests (Vitest in `tests/unit/`) |
+| `mise run test` | Both `test-rust` and `test-unit` in parallel |
+| `mise run test-e2e` | All Playwright E2E specs except `health.spec.ts` (requires a prior `mise run build`) |
+| `mise run test-e2e-docker` | Health endpoint E2E tests against the Docker container (requires a prior `mise run docker-build`) |
+
+If a test plan requires running a subset of E2E specs not covered by an existing task, **add a new `[tasks.*]` entry to `mise.toml`** rather than constructing a raw `npx playwright test` command.
+
+---
+
 ## Layers
 
 | Layer | Tool | Location | When run |
@@ -33,7 +49,7 @@ All logic in the Rust crate must be tested at the unit level using `#[cfg(test)]
 **Running:**
 
 ```bash
-cd crate && cargo test
+mise run test-rust
 ```
 
 ---
@@ -54,7 +70,7 @@ Unit tests for the TypeScript layer live in `tests/unit/`. They test pure logic 
 **Running:**
 
 ```bash
-cd tests/unit && npx vitest run
+mise run test-unit
 ```
 
 ---
@@ -71,16 +87,16 @@ Browsers tested: **Chromium** and **Firefox** only (matching browser targets).
 
 Base URL: `http://localhost:4173` (Vite preview server).
 
-Before running E2E tests, build and preview the app:
+Before running E2E tests, build the app:
 
 ```bash
-cd app && npm run build && npm run preview
+mise run build
 ```
 
-Then in a separate terminal:
+Then run the E2E suite:
 
 ```bash
-cd tests/e2e && npx playwright test
+mise run test-e2e
 ```
 
 ### Test files
@@ -102,10 +118,8 @@ Each scenario below maps to a test file in `tests/e2e/`. When implementing or up
 **Running against Docker:**
 
 ```bash
-docker build -t gpx-mapper .
-docker run -d -p 8080:80 --name gpx-mapper-test gpx-mapper
-BASE_URL=http://localhost:8080 npx playwright test health.spec.ts
-docker rm -f gpx-mapper-test
+mise run docker-build
+mise run test-e2e-docker
 ```
 
 #### `upload.spec.ts` — File Upload
@@ -243,6 +257,7 @@ test("upload a FIT.GZ file", async ({ page }) => {
 ```
 
 **Rules:**
+
 - Never hardcode a filename from `test-data/` in a spec file.
 - Use `gpxFiles()[0]` / `gpxFiles()[1]` for first/second file; guard with `test.skip(files.length < 2, ...)` when two are needed.
 - Use `fileStem(file)` when asserting against the track name embedded in GPX or HTML output.
