@@ -68,8 +68,8 @@ run = "npx vitest run"
 dir = "tests/unit"
 
 [tasks.test-e2e]
-description = "Run Playwright end-to-end tests (requires a prior 'mise run build')"
-run = "npx playwright test upload.spec.ts map.spec.ts colours.spec.ts download.spec.ts accessibility.spec.ts"
+description = "Run all Playwright end-to-end tests except health (requires a prior 'mise run build')"
+run = "npx playwright test upload.spec.ts map.spec.ts colours.spec.ts download.spec.ts accessibility.spec.ts carto.spec.ts providers.spec.ts elevation.spec.ts"
 dir = "tests/e2e"
 
 [tasks.test-e2e-docker]

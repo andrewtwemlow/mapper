@@ -2,12 +2,10 @@
  * Health endpoint scenarios — verifies the /health route returns the expected
  * status and body for use with liveness and readiness probes.
  *
- * IMPORTANT: These tests require the nginx Docker container, not the Vite
- * preview server. The preview server serves index.html for all unmatched
- * routes (SPA fallback), so /health will return 200 with HTML content rather
- * than the JSON health response. Run these tests against the Docker container:
- *
- *   docker build -t gpx-mapper . && docker run -p 8080:80 gpx-mapper
+ * IMPORTANT: These tests require BASE_URL to point to an external server
+ * (like nginx/Docker), because the Vite preview server doesn't expose a real
+ * `/health` endpoint. The preview serves SPA fallback HTML for unmatched routes.
+ * Set BASE_URL when running against production-like environment:
  *   BASE_URL=http://localhost:8080 npx playwright test health.spec.ts
  */
 
