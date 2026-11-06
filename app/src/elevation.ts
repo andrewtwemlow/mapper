@@ -390,7 +390,13 @@ function drawChart(canvas: HTMLCanvasElement, points: ProfilePoint[], colour: st
   }
 
   const yAxis = computeNiceAxis(minEle, maxEle);
-  const xAxis = computeNiceAxis(0, Math.max(maxDistKm, MIN_DIST_KM));
+  // For the X axis the plot area must end at the actual track distance, not a
+  // rounded-up nice boundary. Derive a nice tick step from the range but keep
+  // niceMax pinned to the real maximum so the chart does not extend beyond the
+  // end of the track.
+  const xDistKm = Math.max(maxDistKm, MIN_DIST_KM);
+  const { step: xStep } = computeNiceAxis(0, xDistKm);
+  const xAxis = { niceMin: 0, niceMax: xDistKm, step: xStep };
 
   // ── Plot area ────────────────────────────────────────────────────────────────
   const plotLeft = PADDING_LEFT;
