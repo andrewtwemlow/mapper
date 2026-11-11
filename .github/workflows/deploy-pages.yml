@@ -31,6 +31,7 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
+          toolchain: stable
           targets: wasm32-unknown-unknown
 
       - name: Install wasm-pack
