@@ -11,6 +11,8 @@ import { defineConfig } from "vite";
  * - The build targets latest Chrome and Firefox only (matching project requirements).
  */
 export default defineConfig({
+  // Relative assets work for both GitHub project Pages subpaths and custom domains.
+  base: "./",
   build: {
     // Target latest stable Chrome and Firefox as per project requirements
     // (see .kiro/steering/project.md). Update these when major versions ship.
