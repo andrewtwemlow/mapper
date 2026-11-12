@@ -1,6 +1,8 @@
-# GPX Mapper v2
+# GPX Mapper
 
 A purely client-side WebAssembly application for uploading, visualising, and exporting GPS activity files.
+
+Live demo: [andrewtwemlow.github.io/mapper](https://andrewtwemlow.github.io/mapper/)
 
 Upload GPX, FIT (.fit / .fit.gz), TCX (.tcx / .tcx.gz), or KML (.kml / .kml.gz) files. All processing happens in the browser — no data is sent to a server.
 
