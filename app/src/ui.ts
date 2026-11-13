@@ -595,8 +595,10 @@ function syncTrackOrder(list: HTMLElement, mapHandle: MapHandle): void {
  *   the polyline when the track is deleted.
  */
 function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
-  const list = document.getElementById("track-list");
-  if (!list) return;
+  const listEl = document.getElementById("track-list");
+  if (!listEl) return;
+  // Capture as a non-nullable local so inner closures see the narrowed type.
+  const list: HTMLElement = listEl;
 
   const item = document.createElement("li");
   item.className = "track-list__item";
@@ -675,17 +677,32 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
   });
 
   // ── Drag-and-drop reorder ──────────────────────────────────────────────────
+
+  /** Remove insertion-line indicator classes from every list item. */
+  function clearInsertionLines(): void {
+    list.querySelectorAll(".track-list__item--insert-above, .track-list__item--insert-below").forEach((el) => {
+      el.classList.remove("track-list__item--insert-above", "track-list__item--insert-below");
+    });
+  }
+
+  /**
+   * Return `true` when the pointer is in the top half of `el`.
+   * Used to decide whether to insert before or after the target item.
+   */
+  function isInTopHalf(el: HTMLElement, clientY: number): boolean {
+    const { top, height } = el.getBoundingClientRect();
+    return clientY < top + height / 2;
+  }
+
   item.addEventListener("dragstart", (e: DragEvent) => {
     e.dataTransfer?.setData("text/plain", track.name);
-    // Defer adding the dragging class so the drag image renders normally.
+    // Defer adding the dragging class so the drag image captures the normal state.
     setTimeout(() => item.classList.add("track-list__item--dragging"), 0);
   });
 
   item.addEventListener("dragend", () => {
     item.classList.remove("track-list__item--dragging");
-    list.querySelectorAll(".track-list__item--drag-over").forEach((el) => {
-      el.classList.remove("track-list__item--drag-over");
-    });
+    clearInsertionLines();
   });
 
   item.addEventListener("dragover", (e: DragEvent) => {
@@ -693,16 +710,24 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = "move";
     }
-    // Highlight the target drop slot.
-    list.querySelectorAll(".track-list__item--drag-over").forEach((el) => {
-      el.classList.remove("track-list__item--drag-over");
-    });
-    item.classList.add("track-list__item--drag-over");
+    // Show a thin insertion line above or below this item based on cursor position.
+    clearInsertionLines();
+    if (isInTopHalf(item, e.clientY)) {
+      item.classList.add("track-list__item--insert-above");
+    } else {
+      item.classList.add("track-list__item--insert-below");
+    }
+  });
+
+  item.addEventListener("dragleave", () => {
+    // Only clear this item's indicator; leave others alone.
+    item.classList.remove("track-list__item--insert-above", "track-list__item--insert-below");
   });
 
   item.addEventListener("drop", (e: DragEvent) => {
     e.preventDefault();
-    item.classList.remove("track-list__item--drag-over");
+    clearInsertionLines();
+
     const draggedName = e.dataTransfer?.getData("text/plain");
     if (!draggedName || draggedName === track.name) return;
 
@@ -711,8 +736,13 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
     ) as HTMLElement | null;
     if (!draggedEl) return;
 
-    // Insert the dragged item before the drop target.
-    list.insertBefore(draggedEl, item);
+    if (isInTopHalf(item, e.clientY)) {
+      // Insert before this item.
+      list.insertBefore(draggedEl, item);
+    } else {
+      // Insert after this item (before the next sibling, or at end).
+      list.insertBefore(draggedEl, item.nextSibling);
+    }
     syncTrackOrder(list, mapHandle);
   });
 

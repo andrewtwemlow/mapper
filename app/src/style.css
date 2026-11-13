@@ -296,10 +296,14 @@ body {
   opacity: 0.4;
 }
 
-/* Drop target highlight */
-.track-list__item--drag-over {
-  outline: 2px solid var(--colour-accent);
-  outline-offset: 1px;
+/* Insertion line above the target item */
+.track-list__item--insert-above {
+  border-top: 2px solid var(--colour-accent);
+}
+
+/* Insertion line below the target item */
+.track-list__item--insert-below {
+  border-bottom: 2px solid var(--colour-accent);
 }
 
 .track-list__colour-picker {

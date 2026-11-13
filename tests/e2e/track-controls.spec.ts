@@ -152,28 +152,62 @@ test.describe("Track Controls — Drag Reorder", () => {
    * Simulate an HTML5 drag-and-drop reorder by dispatching the full sequence
    * of drag events on the source and target elements.
    *
-   * Playwright's `dragTo` uses mouse events which do not reliably trigger HTML5
-   * DragEvent handlers (`dragstart`, `dragover`, `drop`). Dispatching the events
-   * directly via `page.evaluate` is the correct approach for HTML5 d-n-d.
+   * Playwright's `dragTo` synthesises mouse events which do not reliably trigger
+   * HTML5 DragEvent handlers (`dragstart`, `dragover`, `drop`). Dispatching
+   * DragEvents directly via `page.evaluate` with an explicit `clientY` is the
+   * correct approach for HTML5 drag-and-drop.
+   *
+   * The `position` parameter controls which half of the target receives the
+   * drop: `"top"` inserts the dragged item *before* the target; `"bottom"`
+   * inserts it *after* the target.
+   *
+   * @param page - Playwright page.
+   * @param sourceSelector - CSS selector for the item being dragged.
+   * @param targetSelector - CSS selector for the drop target item.
+   * @param position - Which half of the target to drop onto.
    */
   async function simulateDragReorder(
     page: import("@playwright/test").Page,
     sourceSelector: string,
     targetSelector: string,
+    position: "top" | "bottom",
   ): Promise<void> {
     await page.evaluate(
-      ({ src, tgt }: { src: string; tgt: string }) => {
+      ({
+        src,
+        tgt,
+        pos,
+      }: {
+        src: string;
+        tgt: string;
+        pos: "top" | "bottom";
+      }) => {
         const source = document.querySelector(src) as HTMLElement | null;
         const target = document.querySelector(tgt) as HTMLElement | null;
         if (!source || !target) return;
 
+        // Compute a clientY that reliably lands in the requested half.
+        const rect = target.getBoundingClientRect();
+        const clientY =
+          pos === "top"
+            ? rect.top + rect.height * 0.25
+            : rect.top + rect.height * 0.75;
+
         const dataTransfer = new DataTransfer();
-        source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
-        target.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer }));
-        target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
-        source.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer }));
+        source.dispatchEvent(
+          new DragEvent("dragstart", { bubbles: true, dataTransfer }),
+        );
+        target.dispatchEvent(
+          new DragEvent("dragover", { bubbles: true, dataTransfer, clientY }),
+        );
+        target.dispatchEvent(
+          new DragEvent("drop", { bubbles: true, dataTransfer, clientY }),
+        );
+        source.dispatchEvent(
+          new DragEvent("dragend", { bubbles: true, dataTransfer }),
+        );
       },
-      { src: sourceSelector, tgt: targetSelector },
+      { src: sourceSelector, tgt: targetSelector, pos: position },
     );
   }
 
@@ -194,12 +228,12 @@ test.describe("Track Controls — Drag Reorder", () => {
         items.map((el) => (el as HTMLElement).dataset["trackName"] ?? ""),
       );
 
-    // Drag the second item onto the first — insertBefore puts item[1] before
-    // item[0], swapping their positions.
+    // Drop item[1] onto the top half of item[0] → inserts item[1] before item[0].
     await simulateDragReorder(
       page,
       "#track-list li:nth-child(2)",
       "#track-list li:nth-child(1)",
+      "top",
     );
 
     const newOrder = await page
@@ -216,6 +250,39 @@ test.describe("Track Controls — Drag Reorder", () => {
     expect(newOrder).toContain(initialOrder[1]);
   });
 
+  test("dropping onto bottom half inserts after the target", async ({ page }) => {
+    const files = gpxFiles();
+    test.skip(files.length < 2, "Need at least 2 GPX files in test-data/");
+
+    await page.locator("#file-input").setInputFiles(files[0]);
+    await page.locator("#file-input").setInputFiles(files[1]);
+    await expect(page.locator("#track-list li")).toHaveCount(2);
+
+    const initialOrder = await page
+      .locator("#track-list li")
+      .evaluateAll((items) =>
+        items.map((el) => (el as HTMLElement).dataset["trackName"] ?? ""),
+      );
+
+    // Drop item[0] onto the bottom half of item[1] → inserts item[0] after item[1].
+    await simulateDragReorder(
+      page,
+      "#track-list li:nth-child(1)",
+      "#track-list li:nth-child(2)",
+      "bottom",
+    );
+
+    const newOrder = await page
+      .locator("#track-list li")
+      .evaluateAll((items) =>
+        items.map((el) => (el as HTMLElement).dataset["trackName"] ?? ""),
+      );
+
+    // item[0] should now be after item[1].
+    expect(newOrder[0]).toBe(initialOrder[1]);
+    expect(newOrder[1]).toBe(initialOrder[0]);
+  });
+
   test("reordering keeps both polylines visible on the map", async ({ page }) => {
     const files = gpxFiles();
     test.skip(files.length < 2, "Need at least 2 GPX files in test-data/");
@@ -228,6 +295,7 @@ test.describe("Track Controls — Drag Reorder", () => {
       page,
       "#track-list li:nth-child(2)",
       "#track-list li:nth-child(1)",
+      "top",
     );
 
     // Both polylines must still be rendered after the reorder.
@@ -245,6 +313,7 @@ test.describe("Track Controls — Drag Reorder", () => {
       page,
       "#track-list li:nth-child(2)",
       "#track-list li:nth-child(1)",
+      "top",
     );
 
     await expect(
