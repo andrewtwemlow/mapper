@@ -315,6 +315,25 @@ export interface MapHandle {
    * @param name - The track name as returned by the parser.
    */
   removeTrack: (name: string) => void;
+
+  /**
+   * Show or hide a track polyline without removing it from the internal store.
+   * @param name - The track name as returned by the parser.
+   * @param visible - `true` to show; `false` to hide.
+   */
+  setTrackVisible: (name: string, visible: boolean) => void;
+
+  /**
+   * Reorder track polylines so their SVG paint order matches the given name
+   * array. The first entry in `orderedNames` will be painted on top; the last
+   * will be painted at the bottom.
+   *
+   * Hidden tracks retain their position in the stacking order and will appear
+   * in the correct position when made visible again.
+   *
+   * @param orderedNames - Track names in top-to-bottom visual order.
+   */
+  reorderTracks: (orderedNames: string[]) => void;
 }
 
 // ── initMap ───────────────────────────────────────────────────────────────────
@@ -499,6 +518,28 @@ export function initMap(containerId: string): MapHandle {
       if (polyline) {
         polyline.remove();
         polylines.delete(name);
+      }
+    },
+
+    setTrackVisible(name: string, visible: boolean): void {
+      const polyline = polylines.get(name);
+      if (!polyline) return;
+      if (visible) {
+        polyline.addTo(map);
+      } else {
+        polyline.remove();
+      }
+    },
+
+    reorderTracks(orderedNames: string[]): void {
+      // Paint order in SVG: later elements appear on top.
+      // To make orderedNames[0] the topmost layer, call bringToFront from
+      // last to first so the final bringToFront call lands on orderedNames[0].
+      for (let i = orderedNames.length - 1; i >= 0; i--) {
+        const polyline = polylines.get(orderedNames[i] ?? "");
+        if (polyline) {
+          polyline.bringToFront();
+        }
       }
     },
   };

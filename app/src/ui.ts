@@ -111,11 +111,11 @@ export function renderAppShell(): void {
           <label for="provider-selector" class="visually-hidden">Map provider</label>
           <select id="provider-selector" class="tile-selector" aria-label="Map provider">
             ${Object.entries(PROVIDERS)
-              .map(
-                ([key, cfg]) =>
-                  `<option value="${key}"${key === DEFAULT_PROVIDER ? " selected" : ""}>${cfg.label}</option>`,
-              )
-              .join("\n            ")}
+      .map(
+        ([key, cfg]) =>
+          `<option value="${key}"${key === DEFAULT_PROVIDER ? " selected" : ""}>${cfg.label}</option>`,
+      )
+      .join("\n            ")}
           </select>
         </section>
 
@@ -553,13 +553,46 @@ function parseFile(bytes: Uint8Array, filename: string): ParsedTrack {
 }
 
 /**
+ * Re-synchronise the `tracks` module array and map layer z-order to match the
+ * current DOM order of `#track-list` items.
+ *
+ * Called after every drag-and-drop reorder so that downloads and map paint
+ * order stay in sync with what the user sees in the sidebar.
+ *
+ * @param list - The `<ul>` element containing the track list items.
+ * @param mapHandle - Used to call `reorderTracks` and `updateDownloads`.
+ */
+function syncTrackOrder(list: HTMLElement, mapHandle: MapHandle): void {
+  const orderedNames = Array.from(
+    list.querySelectorAll<HTMLElement>("[data-track-name]"),
+  ).map((el) => el.dataset["trackName"] ?? "");
+
+  // Rebuild the tracks array in the new visual order.
+  const reordered: ParsedTrack[] = [];
+  for (const name of orderedNames) {
+    const t = tracks.find((track) => track.name === name);
+    if (t) reordered.push(t);
+  }
+  tracks.length = 0;
+  reordered.forEach((t) => tracks.push(t));
+
+  mapHandle.reorderTracks(orderedNames);
+  updateDownloads(mapHandle);
+}
+
+/**
  * Add a track entry to the sidebar track list.
  *
- * Each entry shows a remove button, the track name, and a colour picker input.
+ * Each entry shows a drag handle (for reordering), a visibility toggle, the
+ * track name, a colour picker, and a remove button.
+ *
+ * The first item in the list is painted on top of subsequent items on the map.
+ * Dragging items changes paint order; toggling the eye icon hides/shows the
+ * polyline without removing it.
  *
  * @param track - The track to display.
- * @param mapHandle - Used to update the polyline colour on picker change and
- *   to remove the polyline when the track is deleted.
+ * @param mapHandle - Used to update the polyline on interaction and to remove
+ *   the polyline when the track is deleted.
  */
 function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
   const list = document.getElementById("track-list");
@@ -568,15 +601,22 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
   const item = document.createElement("li");
   item.className = "track-list__item";
   item.dataset["trackName"] = track.name;
+  item.draggable = true;
 
   const colourId = `colour-${CSS.escape(track.name)}`;
 
   item.innerHTML = `
+    <span
+      class="track-list__drag-handle"
+      aria-hidden="true"
+      title="Drag to reorder"
+    >&#x2630;</span>
     <button
       type="button"
-      class="track-list__remove"
-      aria-label="Remove track ${escapeHtml(track.name)}"
-    >&#x2715;</button>
+      class="track-list__visibility"
+      aria-label="Hide track ${escapeHtml(track.name)}"
+      aria-pressed="false"
+    >&#x1F441;</button>
     <span class="track-list__name" title="${escapeHtml(track.name)}">${escapeHtml(track.name)}</span>
     <label for="${colourId}" class="visually-hidden">Track colour for ${escapeHtml(track.name)}</label>
     <input
@@ -586,8 +626,14 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
       value="${track.colour ?? DEFAULT_COLOURS[0]}"
       aria-label="Track colour for ${escapeHtml(track.name)}"
     />
+    <button
+      type="button"
+      class="track-list__remove"
+      aria-label="Remove track ${escapeHtml(track.name)}"
+    >&#x2715;</button>
   `;
 
+  // ── Colour picker ──────────────────────────────────────────────────────────
   const picker = item.querySelector("input[type=color]") as HTMLInputElement | null;
   picker?.addEventListener("change", () => {
     const idx = tracks.findIndex((t) => t.name === track.name);
@@ -601,6 +647,21 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
     }
   });
 
+  // ── Visibility toggle ──────────────────────────────────────────────────────
+  let visible = true;
+  const visBtn = item.querySelector(".track-list__visibility") as HTMLButtonElement | null;
+  visBtn?.addEventListener("click", () => {
+    visible = !visible;
+    mapHandle.setTrackVisible(track.name, visible);
+    item.classList.toggle("track-list__item--hidden", !visible);
+    visBtn.setAttribute("aria-pressed", String(!visible));
+    visBtn.setAttribute(
+      "aria-label",
+      `${visible ? "Hide" : "Show"} track ${track.name}`,
+    );
+  });
+
+  // ── Remove button ──────────────────────────────────────────────────────────
   const removeBtn = item.querySelector(".track-list__remove") as HTMLButtonElement | null;
   removeBtn?.addEventListener("click", () => {
     const idx = tracks.findIndex((t) => t.name === track.name);
@@ -611,6 +672,48 @@ function addTrackToList(track: ParsedTrack, mapHandle: MapHandle): void {
     item.remove();
     updateDownloads(mapHandle);
     updateElevationView(mapHandle);
+  });
+
+  // ── Drag-and-drop reorder ──────────────────────────────────────────────────
+  item.addEventListener("dragstart", (e: DragEvent) => {
+    e.dataTransfer?.setData("text/plain", track.name);
+    // Defer adding the dragging class so the drag image renders normally.
+    setTimeout(() => item.classList.add("track-list__item--dragging"), 0);
+  });
+
+  item.addEventListener("dragend", () => {
+    item.classList.remove("track-list__item--dragging");
+    list.querySelectorAll(".track-list__item--drag-over").forEach((el) => {
+      el.classList.remove("track-list__item--drag-over");
+    });
+  });
+
+  item.addEventListener("dragover", (e: DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "move";
+    }
+    // Highlight the target drop slot.
+    list.querySelectorAll(".track-list__item--drag-over").forEach((el) => {
+      el.classList.remove("track-list__item--drag-over");
+    });
+    item.classList.add("track-list__item--drag-over");
+  });
+
+  item.addEventListener("drop", (e: DragEvent) => {
+    e.preventDefault();
+    item.classList.remove("track-list__item--drag-over");
+    const draggedName = e.dataTransfer?.getData("text/plain");
+    if (!draggedName || draggedName === track.name) return;
+
+    const draggedEl = list.querySelector(
+      `[data-track-name="${CSS.escape(draggedName)}"]`,
+    ) as HTMLElement | null;
+    if (!draggedEl) return;
+
+    // Insert the dragged item before the drop target.
+    list.insertBefore(draggedEl, item);
+    syncTrackOrder(list, mapHandle);
   });
 
   list.appendChild(item);
