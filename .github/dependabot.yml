@@ -18,6 +18,9 @@ updates:
   - package-ecosystem: "npm"
     directory: "/app/"
     target-branch: "dependabot-dev"
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
     schedule:
       interval: "weekly"
   - package-ecosystem: "npm"
