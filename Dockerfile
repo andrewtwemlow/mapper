@@ -2,7 +2,7 @@
 
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 # Builds the Rust wasm crate and the Vite frontend, producing a static dist/.
-FROM rust:1.98-slim AS builder
+FROM rust:1.99-slim AS builder
 
 # Install Node.js (LTS) and wasm-pack build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -40,7 +40,7 @@ RUN cd app && npm ci && npm run build
 
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
 # Serves the static build output with nginx.
-FROM nginx:1.29-alpine AS server
+FROM nginx:1.31-alpine AS server
 
 # Remove default nginx content
 RUN rm -rf /usr/share/nginx/html/*

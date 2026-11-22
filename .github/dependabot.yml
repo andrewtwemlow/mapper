@@ -2,25 +2,31 @@ version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "dependabot-dev"
     schedule:
       interval: "weekly"
   - package-ecosystem: "docker"
     directory: "/"
+    target-branch: "dependabot-dev"
     schedule:
       interval: "weekly"
   - package-ecosystem: "cargo"
     directory: "/crate/"
+    target-branch: "dependabot-dev"
     schedule:
       interval: "weekly"
   - package-ecosystem: "npm"
     directory: "/app/"
+    target-branch: "dependabot-dev"
     schedule:
       interval: "weekly"
   - package-ecosystem: "npm"
     directory: "/tests/unit"
+    target-branch: "dependabot-dev"
     schedule:
       interval: "weekly"
   - package-ecosystem: "pre-commit"
     directory: "/"
+    target-branch: "dependabot-dev"
     schedule:
       interval: "weekly"
